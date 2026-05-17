@@ -1,0 +1,14 @@
+# 忽略 CMake 自动生成的构建目录 (Build Directory)
+build/
+
+# 忽略编译产生的临时文件和可执行程序 (Binaries and Executables)
+*.exe
+*.obj
+*.pdb
+*.ilk
+*.lib
+*.dll
+
+# (可选) 忽略 VS Code 的本地个人环境配置 (Local IDE Configuration)
+# 如果你想在不同电脑间同步 VS Code 配置，可以不加这一行
+.vscode/
