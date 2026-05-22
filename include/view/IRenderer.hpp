@@ -79,6 +79,11 @@ public:
     /** 阻塞等待用户操作并返回 */
     virtual UserAction waitForAction() = 0;
 
+    /** 返回渲染器内部的当前光标位置 (row, col)。
+     *  仅 GUI 渲染器需要实现；控制台渲染器返回 {-1, -1}，
+     *  因为控制台模式下光标由 GameController 自行管理。 */
+    virtual std::pair<int, int> getCursorPosition() const { return {-1, -1}; }
+
     /** 检查窗口/控制台是否仍然有效 */
     virtual bool isOpen() const = 0;
 

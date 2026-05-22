@@ -21,11 +21,14 @@ SFMLRenderer::SFMLRenderer()
               sf::Style::Titlebar | sf::Style::Close)
     , _cellSize(26.0f)
     , _cursorRow(0), _cursorCol(0)
+    , _gridRows(25), _gridCols(25)
     , _selectedRow(-1), _selectedCol(-1)
     , _hasSelection(false)
     , _animRow(-1), _animCol(-1)
     , _animating(false)
     , _pendingAction(UserAction::NONE)
+    , _screen(UIScreen::Menu)
+    , _puzzleCount(0)
 {
     _window.setVerticalSyncEnabled(true);
 
@@ -76,9 +79,14 @@ SFMLRenderer::~SFMLRenderer()
 
 void SFMLRenderer::render(const GameState& state)
 {
+    _screen = UIScreen::Gameplay;
     const Grid& grid = state.grid();
     int rows = grid.rows();
     int cols = grid.cols();
+
+    // 同步内部光标边界
+    _gridRows = rows;
+    _gridCols = cols;
 
     // 动态计算格子大小
     float availW = PANEL_X - GRID_OFFSET_X - 10.0f;
@@ -378,6 +386,7 @@ void SFMLRenderer::drawInfoPanel(const GameState& state)
 
 void SFMLRenderer::showMenu()
 {
+    _screen = UIScreen::Menu;
     _window.clear(sf::Color(20, 20, 30));
 
     _text.setCharacterSize(36);
@@ -433,6 +442,8 @@ void SFMLRenderer::showMenu()
 
 void SFMLRenderer::showPuzzleList(const std::vector<Puzzle>& puzzles)
 {
+    _screen = UIScreen::PuzzleList;
+    _puzzleCount = static_cast<int>(puzzles.size());
     _window.clear(sf::Color(20, 20, 30));
 
     _text.setCharacterSize(28);
@@ -500,6 +511,7 @@ void SFMLRenderer::showPuzzleList(const std::vector<Puzzle>& puzzles)
 
 void SFMLRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)
 {
+    _screen = UIScreen::Leaderboard;
     _window.clear(sf::Color(20, 20, 30));
 
     _text.setCharacterSize(28);
@@ -596,6 +608,7 @@ void SFMLRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)
 
 void SFMLRenderer::showResult(const ScoreRecord& record)
 {
+    _screen = UIScreen::Result;
     _window.clear(sf::Color(20, 20, 30));
 
     _text.setCharacterSize(32);
@@ -650,6 +663,7 @@ void SFMLRenderer::showResult(const ScoreRecord& record)
 
 void SFMLRenderer::showMessage(const std::string& msg)
 {
+    _screen = UIScreen::Message;
     _window.clear(sf::Color(20, 20, 30));
 
     _text.setCharacterSize(20);
@@ -665,6 +679,21 @@ void SFMLRenderer::showMessage(const std::string& msg)
     _window.draw(_text);
 
     _window.display();
+
+    // 阻塞等待用户按键或关闭窗口
+    while (_window.isOpen()) {
+        sf::Event event;
+        while (_window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed) {
+                _window.close();
+                return;
+            }
+            if (event.type == sf::Event::KeyPressed) {
+                return;
+            }
+        }
+        sf::sleep(sf::milliseconds(10));
+    }
 }
 
 std::string SFMLRenderer::promptPlayerName()
@@ -890,7 +919,7 @@ UserAction SFMLRenderer::waitForAction()
             }
 
             if (event.type == sf::Event::MouseButtonPressed) {
-                UserAction a = processMouseEvent(event, true);
+                UserAction a = processMouseEvent(event);
                 if (a != UserAction::NONE) return a;
             }
         }
@@ -904,13 +933,40 @@ UserAction SFMLRenderer::waitForAction()
 UserAction SFMLRenderer::processKeyEvent(const sf::Event& event)
 {
     switch (event.key.code) {
-        case sf::Keyboard::Up:    return UserAction::UP;
-        case sf::Keyboard::Down:  return UserAction::DOWN;
-        case sf::Keyboard::Left:  return UserAction::LEFT;
-        case sf::Keyboard::Right: return UserAction::RIGHT;
+        case sf::Keyboard::Up:
+            if (_cursorRow > 0) _cursorRow--;
+            return UserAction::NONE;  // 内化：不干扰 Controller
+        case sf::Keyboard::Down:
+            if (_cursorRow < _gridRows - 1) _cursorRow++;
+            return UserAction::NONE;
+        case sf::Keyboard::Left:
+            if (_cursorCol > 0) _cursorCol--;
+            return UserAction::NONE;
+        case sf::Keyboard::Right:
+            if (_cursorCol < _gridCols - 1) _cursorCol++;
+            return UserAction::NONE;
         case sf::Keyboard::Enter: return UserAction::CONFIRM;
-        case sf::Keyboard::Space: return UserAction::SELECT_CELL;
-        case sf::Keyboard::Escape:return UserAction::BACK;
+        case sf::Keyboard::Space:
+            // 两段式：无选中→选中；同格再按→取消；异格再按→合并
+            if (!_hasSelection) {
+                _selectedRow = _cursorRow;
+                _selectedCol = _cursorCol;
+                _hasSelection = true;
+                return UserAction::NONE;
+            }
+            if (_cursorRow == _selectedRow && _cursorCol == _selectedCol) {
+                _hasSelection = false;  // 同一格：取消选中
+                return UserAction::NONE;
+            }
+            _hasSelection = false;
+            return UserAction::SELECT_CELL;
+        case sf::Keyboard::Escape:
+            // 先清除选中态，已无选中则返回 BACK
+            if (_hasSelection) {
+                _hasSelection = false;
+                return UserAction::NONE;
+            }
+            return UserAction::BACK;
         case sf::Keyboard::S:     return UserAction::SUBMIT;
         case sf::Keyboard::Q:     return UserAction::QUIT;
         case sf::Keyboard::L:     return UserAction::VIEW_LEADERBOARD;
@@ -931,15 +987,18 @@ UserAction SFMLRenderer::processKeyEvent(const sf::Event& event)
     }
 }
 
-UserAction SFMLRenderer::processMouseEvent(const sf::Event& event, bool inGame)
+UserAction SFMLRenderer::processMouseEvent(const sf::Event& event)
 {
     if (event.mouseButton.button != sf::Mouse::Left) return UserAction::NONE;
 
     int mx = event.mouseButton.x;
     int my = event.mouseButton.y;
 
-    if (inGame) {
-        // 检查是否点击了网格
+    switch (_screen) {
+
+    case UIScreen::Gameplay:
+    case UIScreen::StartSelect:
+        // ---- 游戏内网格点击 ----
         if (mx >= GRID_OFFSET_X && mx < PANEL_X - 10 &&
             my >= GRID_OFFSET_Y && my < WINDOW_H - 10) {
 
@@ -948,27 +1007,80 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event& event, bool inGame)
                 _cursorRow = row;
                 _cursorCol = col;
 
-                // 如果已选中格子且点击的是其邻居 → 尝试合并
                 if (_hasSelection) {
                     int dr = row - _selectedRow;
                     int dc = col - _selectedCol;
                     if ((std::abs(dr) + std::abs(dc)) == 1) {
-                        // 邻居：返回 SELECT_CELL，由 Controller 处理合并
+                        _hasSelection = false;
                         return UserAction::SELECT_CELL;
+                    }
+                    if (dr == 0 && dc == 0) {
+                        _hasSelection = false;
+                        return UserAction::NONE;
                     }
                 }
 
-                // 否则：选中/切换选中
                 _selectedRow = row;
                 _selectedCol = col;
                 _hasSelection = true;
-                return UserAction::SELECT_CELL;
+                return UserAction::NONE;
             }
         }
+        break;
+
+    case UIScreen::Menu: {
+        // ---- 主菜单按钮点击 ----
+        // 按钮区域：居中，宽 360，高 44
+        float bx = WINDOW_W / 2.0f - 180.0f;
+        float bw = 360.0f, bh = 44.0f;
+
+        auto inside = [&](float by) {
+            return mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
+        };
+
+        if (inside(220.0f))      return UserAction::SELECT_PUZZLE_1;
+        if (inside(280.0f))      return UserAction::VIEW_LEADERBOARD;
+        if (inside(340.0f))      return UserAction::QUIT;
+        break;
     }
 
-    // 菜单 / 题面选择阶段的点击检测
-    // 点击在信息面板外不做处理
+    case UIScreen::PuzzleList: {
+        // ---- 题面列表点击 ----
+        float startY = 130.0f;
+        float listBx = WINDOW_W / 2.0f - 250.0f;
+        float listBw = 500.0f, listBh = 56.0f;
+
+        for (int i = 0; i < _puzzleCount; ++i) {
+            float by = startY + i * 70.0f;
+            if (mx >= listBx && mx <= listBx + listBw &&
+                my >= by && my <= by + listBh) {
+                // 映射到 SELECT_PUZZLE_1..5
+                switch (i) {
+                    case 0: return UserAction::SELECT_PUZZLE_1;
+                    case 1: return UserAction::SELECT_PUZZLE_2;
+                    case 2: return UserAction::SELECT_PUZZLE_3;
+                    case 3: return UserAction::SELECT_PUZZLE_4;
+                    case 4: return UserAction::SELECT_PUZZLE_5;
+                    default: return UserAction::NONE;
+                }
+            }
+        }
+
+        // 返回按钮
+        float backY = startY + _puzzleCount * 70.0f + 30.0f;
+        float backBx = WINDOW_W / 2.0f - 100.0f;
+        if (mx >= backBx && mx <= backBx + 200.0f &&
+            my >= backY && my <= backY + 40.0f) {
+            return UserAction::BACK;
+        }
+        break;
+    }
+
+    default:
+        // Leaderboard / Result / Message / NamePrompt：任意点击视为确认/继续
+        return UserAction::CONFIRM;
+    }
+
     return UserAction::NONE;
 }
 
@@ -1036,6 +1148,11 @@ std::vector<std::pair<int, int>> SFMLRenderer::getValidNeighbors(
 bool SFMLRenderer::isOpen() const
 {
     return _window.isOpen();
+}
+
+std::pair<int, int> SFMLRenderer::getCursorPosition() const
+{
+    return {_cursorRow, _cursorCol};
 }
 
 void SFMLRenderer::clearScreen()

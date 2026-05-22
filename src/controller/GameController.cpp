@@ -7,6 +7,9 @@
 
 #include "controller/GameController.hpp"
 #include "view/ConsoleRenderer.hpp"
+#ifdef HAS_GUI
+#include "view/SFMLRenderer.hpp"
+#endif
 #include <iostream>
 #include <iomanip>
 #include <ctime>
@@ -40,8 +43,12 @@ GameController::GameController()
     // 回放
     _replayBuffer = std::make_unique<ReplayBuffer>(*_fileManager);
 
-    // 渲染器（当前使用终端渲染器）
+    // 渲染器（根据编译选项选择终端或 SFML 图形渲染器）
+#ifdef HAS_GUI
+    _renderer = std::make_unique<SFMLRenderer>();
+#else
     _renderer = std::make_unique<ConsoleRenderer>();
+#endif
 
     // 输入处理器
     _inputHandler = std::make_unique<InputHandler>();
@@ -170,12 +177,17 @@ void GameController::startNewGame(const Puzzle& puzzle)
     _cursorRow = _gridRows / 2;
     _cursorCol = _gridCols / 2;
 
-    // 默认起点（5 个固定坐标）
+    // 起始格子：GUI 模式交互选择，控制台模式使用默认 5 个固定坐标
+#ifdef HAS_GUI
+    std::vector<std::pair<int, int>> starts =
+        _renderer->promptStartingCells(initialGrid, 5);
+#else
     std::vector<std::pair<int, int>> starts = {
         {0, 0}, {_gridRows/2, _gridCols/2},
         {0, _gridCols-1}, {_gridRows-1, 0},
         {_gridRows-1, _gridCols-1}
     };
+#endif
 
     _state = std::make_unique<GameState>(initialGrid, starts, puzzle.id());
 
@@ -201,9 +213,15 @@ void GameController::handleGameplay()
     }
 
     // 渲染当前状态
+    // 控制台模式：用 cell.setSelected() 标记光标位置供 ConsoleRenderer 高亮
+    // GUI 模式：SFMLRenderer 自行管理光标，无需修改 model 状态
+#ifndef HAS_GUI
     _state->grid().at(_cursorRow, _cursorCol).setSelected(true);
+#endif
     _renderer->render(*_state);
+#ifndef HAS_GUI
     _state->grid().at(_cursorRow, _cursorCol).setSelected(false);
+#endif
 
     // 检查是否有合法操作
     if (!_state->grid().hasAnyValidMove() && _state->stepsTaken() > 0) {
@@ -233,20 +251,26 @@ void GameController::handleGameplay()
             break;
 
         case UserAction::SELECT_CELL:
-            // 空格：检查光标格与周围邻格是否可以合并
+            // 空格/鼠标点击：检查光标格与周围邻格是否可以合并
             {
+#ifdef HAS_GUI
+                auto [curR, curC] = _renderer->getCursorPosition();
+#else
+                int curR = _cursorRow;
+                int curC = _cursorCol;
+#endif
                 Grid& grid = _state->grid();
-                Cell& center = grid.at(_cursorRow, _cursorCol);
+                Cell& center = grid.at(curR, curC);
                 if (center.isEmpty()) break;  // 不能合并空格
 
                 // 尝试四个方向找到第一个可合并的邻格并执行合并
                 bool merged = false;
                 int check[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
                 for (int d = 0; d < 4 && !merged; ++d) {
-                    int nr = _cursorRow + check[d][0];
-                    int nc = _cursorCol + check[d][1];
+                    int nr = curR + check[d][0];
+                    int nc = curC + check[d][1];
                     if (nr >= 0 && nr < _gridRows && nc >= 0 && nc < _gridCols) {
-                        if (tryMerge(nr, nc, _cursorRow, _cursorCol)) {
+                        if (tryMerge(nr, nc, curR, curC)) {
                             merged = true;
                         }
                     }
@@ -257,16 +281,22 @@ void GameController::handleGameplay()
         case UserAction::CONFIRM:
             // Enter: 与光标格上的空格操作相同，尝试合并
             {
+#ifdef HAS_GUI
+                auto [curR, curC] = _renderer->getCursorPosition();
+#else
+                int curR = _cursorRow;
+                int curC = _cursorCol;
+#endif
                 Grid& gr = _state->grid();
-                const Cell& center = gr.at(_cursorRow, _cursorCol);
+                const Cell& center = gr.at(curR, curC);
                 if (!center.isEmpty()) {
                     bool merged = false;
                     int check[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
                     for (int d = 0; d < 4 && !merged; ++d) {
-                        int nr = _cursorRow + check[d][0];
-                        int nc = _cursorCol + check[d][1];
+                        int nr = curR + check[d][0];
+                        int nc = curC + check[d][1];
                         if (nr >= 0 && nr < _gridRows && nc >= 0 && nc < _gridCols) {
-                            if (tryMerge(nr, nc, _cursorRow, _cursorCol)) {
+                            if (tryMerge(nr, nc, curR, curC)) {
                                 merged = true;
                             }
                         }

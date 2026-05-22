@@ -24,6 +24,10 @@
 #include <string>
 #include <utility>
 
+/** SFMLRenderer 内部界面标识 */
+enum class UIScreen { Menu, PuzzleList, Leaderboard, Result, Message,
+                      Gameplay, NamePrompt, StartSelect };
+
 class SFMLRenderer : public IRenderer {
 public:
     SFMLRenderer();
@@ -44,6 +48,7 @@ public:
     UserAction waitForAction() override;
     bool isOpen() const override;
     void clearScreen() override;
+    std::pair<int, int> getCursorPosition() const override;
 
     // ---- 动画触发（由 Controller 在合并后调用） ----
 
@@ -76,7 +81,7 @@ private:
     // ---- 事件处理 ----
 
     UserAction processKeyEvent(const sf::Event& event);
-    UserAction processMouseEvent(const sf::Event& event, bool inGame);
+    UserAction processMouseEvent(const sf::Event& event);
 
     // ---- 工具 ----
 
@@ -110,6 +115,8 @@ private:
     UserAction _pendingAction;
     sf::Cursor _arrowCursor;
     sf::Cursor _handCursor;
+    UIScreen   _screen;       // 当前显示的界面
+    int        _puzzleCount;  // 题面列表项数（用于点击检测）
 };
 
 #endif // HAS_GUI
