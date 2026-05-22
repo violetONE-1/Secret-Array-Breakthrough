@@ -23,6 +23,8 @@
 #include <vector>
 #include <string>
 #include <utility>
+#include <optional>
+#include <memory>
 
 /** SFMLRenderer 内部界面标识 */
 enum class UIScreen { Menu, PuzzleList, Leaderboard, Result, Message,
@@ -80,8 +82,8 @@ private:
 
     // ---- 事件处理 ----
 
-    UserAction processKeyEvent(const sf::Event& event);
-    UserAction processMouseEvent(const sf::Event& event);
+    UserAction processKeyEvent(const sf::Event::KeyPressed& keyEvent);
+    UserAction processMouseEvent(const sf::Event::MouseButtonPressed& mouseEvent);
 
     // ---- 工具 ----
 
@@ -94,8 +96,10 @@ private:
 
     sf::RenderWindow _window;
     sf::Font         _font;
-    sf::Text         _text;       // 复用的文本对象
-    sf::RectangleShape _rect;     // 复用的矩形对象
+    std::unique_ptr<sf::Text> _text;       // 复用的文本对象（延迟构造）
+    sf::RectangleShape _rect;              // 复用的矩形对象
+    std::optional<sf::Cursor> _arrowCursor;
+    std::optional<sf::Cursor> _handCursor;
 
     // 布局
     float _cellSize;
@@ -113,8 +117,6 @@ private:
 
     // 杂项
     UserAction _pendingAction;
-    sf::Cursor _arrowCursor;
-    sf::Cursor _handCursor;
     UIScreen   _screen;       // 当前显示的界面
     int        _puzzleCount;  // 题面列表项数（用于点击检测）
 };

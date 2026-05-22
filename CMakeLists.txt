@@ -32,9 +32,9 @@ target_include_directories(matrix_breakthrough PRIVATE
 
 # ---- SFML linkage (only when ENABLE_GUI=ON) ----
 if(ENABLE_GUI)
-    find_package(SFML 2.6 COMPONENTS graphics window system REQUIRED)
+    find_package(SFML COMPONENTS Graphics Window System REQUIRED)
     target_link_libraries(matrix_breakthrough PRIVATE
-        sfml-graphics sfml-window sfml-system
+        SFML::Graphics SFML::Window SFML::System
     )
     target_compile_definitions(matrix_breakthrough PRIVATE HAS_GUI)
 endif()

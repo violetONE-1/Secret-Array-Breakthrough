@@ -5,6 +5,7 @@
 #ifdef HAS_GUI
 
 #include "view/SFMLRenderer.hpp"
+#include "core/MergeRule.hpp"
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -16,9 +17,10 @@
 // ================================================================
 
 SFMLRenderer::SFMLRenderer()
-    : _window(sf::VideoMode(WINDOW_W, WINDOW_H),
+    : _window(sf::VideoMode({WINDOW_W, WINDOW_H}),
               "Mi Zhen Tu Wei - Matrix Breakthrough",
-              sf::Style::Titlebar | sf::Style::Close)
+              sf::Style::Titlebar | sf::Style::Close,
+              sf::State::Windowed)
     , _cellSize(26.0f)
     , _cursorRow(0), _cursorCol(0)
     , _gridRows(25), _gridCols(25)
@@ -41,7 +43,7 @@ SFMLRenderer::SFMLRenderer()
     };
     bool fontLoaded = false;
     for (const auto& path : fontPaths) {
-        if (_font.loadFromFile(path)) {
+        if (_font.openFromFile(path)) {
             fontLoaded = true;
             break;
         }
@@ -53,14 +55,14 @@ SFMLRenderer::SFMLRenderer()
                   << std::endl;
     }
 
-    _text.setFont(_font);
-    _text.setCharacterSize(14);
-    _text.setFillColor(sf::Color::White);
+    // SFML 3.0: sf::Text 需要构造时传字体，延迟到此处创建
+    _text = std::make_unique<sf::Text>(_font, "", 14);
+    _text->setFillColor(sf::Color::White);
 
-    // 加载光标
-    _arrowCursor.loadFromSystem(sf::Cursor::Arrow);
-    _handCursor.loadFromSystem(sf::Cursor::Hand);
-    _window.setMouseCursor(_arrowCursor);
+    // 加载光标（SFML 3.0: 使用静态工厂方法）
+    _arrowCursor = sf::Cursor::createFromSystem(sf::Cursor::Type::Arrow);
+    _handCursor  = sf::Cursor::createFromSystem(sf::Cursor::Type::Hand);
+    if (_arrowCursor) _window.setMouseCursor(*_arrowCursor);
 
     // 初始化复用矩形
     _rect.setSize(sf::Vector2f(_cellSize - 2, _cellSize - 2));
@@ -128,21 +130,21 @@ void SFMLRenderer::drawGrid(const Grid& grid)
     int cols = grid.cols();
 
     // 列标题
-    _text.setCharacterSize(11);
-    _text.setFillColor(sf::Color(150, 150, 150));
+    _text->setCharacterSize(11);
+    _text->setFillColor(sf::Color(150, 150, 150));
     for (int c = 0; c < cols; ++c) {
         sf::Vector2f pos = gridToPixel(0, c);
-        _text.setString(std::to_string(c));
-        centerText(_text, pos.x, GRID_OFFSET_Y - 16.0f, _cellSize, 14.0f);
-        _window.draw(_text);
+        _text->setString(std::to_string(c));
+        centerText(*_text, pos.x, GRID_OFFSET_Y - 16.0f, _cellSize, 14.0f);
+        _window.draw(*_text);
     }
 
     // 行标题
     for (int r = 0; r < rows; ++r) {
         sf::Vector2f pos = gridToPixel(r, 0);
-        _text.setString(std::to_string(r));
-        centerText(_text, GRID_OFFSET_X - 30.0f, pos.y, 26.0f, _cellSize);
-        _window.draw(_text);
+        _text->setString(std::to_string(r));
+        centerText(*_text, GRID_OFFSET_X - 30.0f, pos.y, 26.0f, _cellSize);
+        _window.draw(*_text);
     }
 
     // 收集有效邻居（如果选中了格子）
@@ -222,7 +224,7 @@ void SFMLRenderer::drawGrid(const Grid& grid)
         }
     }
 
-    _text.setCharacterSize(14);
+    _text->setCharacterSize(14);
 }
 
 sf::Color SFMLRenderer::getCellColor(const Cell& cell) const
@@ -246,9 +248,9 @@ sf::Color SFMLRenderer::getCellColor(const Cell& cell) const
         else if (h < 300) { r = x; g = 0; b = c; }
         else              { r = c; g = 0; b = x; }
         return sf::Color(
-            static_cast<sf::Uint8>((r + m) * 255),
-            static_cast<sf::Uint8>((g + m) * 255),
-            static_cast<sf::Uint8>((b + m) * 255)
+            static_cast<std::uint8_t>((r + m) * 255),
+            static_cast<std::uint8_t>((g + m) * 255),
+            static_cast<std::uint8_t>((b + m) * 255)
         );
     };
 
@@ -275,12 +277,12 @@ void SFMLRenderer::drawCellText(int row, int col,
     unsigned fontSize = static_cast<unsigned>(_cellSize * 0.5f);
     if (fontSize < 8) fontSize = 8;
     if (fontSize > 20) fontSize = 20;
-    _text.setCharacterSize(fontSize);
-    _text.setString(str);
-    _text.setFillColor(color);
-    centerText(_text, pos.x, pos.y, _cellSize - 2, _cellSize - 2);
-    _window.draw(_text);
-    _text.setCharacterSize(14);  // 恢复默认
+    _text->setCharacterSize(fontSize);
+    _text->setString(str);
+    _text->setFillColor(color);
+    centerText(*_text, pos.x, pos.y, _cellSize - 2, _cellSize - 2);
+    _window.draw(*_text);
+    _text->setCharacterSize(14);  // 恢复默认
 }
 
 // ================================================================
@@ -296,25 +298,25 @@ void SFMLRenderer::drawInfoPanel(const GameState& state)
     _rect.setOutlineThickness(0);
     _window.draw(_rect);
 
-    _text.setCharacterSize(20);
-    _text.setFillColor(sf::Color(255, 200, 50));
-    _text.setString("Mi Zhen Tu Wei");
-    _text.setPosition(sf::Vector2f(PANEL_X + 20, 20));
-    _window.draw(_text);
+    _text->setCharacterSize(20);
+    _text->setFillColor(sf::Color(255, 200, 50));
+    _text->setString("Mi Zhen Tu Wei");
+    _text->setPosition(sf::Vector2f(PANEL_X + 20, 20));
+    _window.draw(*_text);
 
-    _text.setCharacterSize(14);
-    _text.setFillColor(sf::Color(200, 200, 200));
+    _text->setCharacterSize(14);
+    _text->setFillColor(sf::Color(200, 200, 200));
 
     float y = 60.0f;
     auto drawLine = [&](const std::string& label, const std::string& value) {
-        _text.setString(label);
-        _text.setPosition(sf::Vector2f(PANEL_X + 15, y));
-        _window.draw(_text);
-        _text.setFillColor(sf::Color::White);
-        _text.setString(value);
-        _text.setPosition(sf::Vector2f(PANEL_X + 120, y));
-        _window.draw(_text);
-        _text.setFillColor(sf::Color(200, 200, 200));
+        _text->setString(label);
+        _text->setPosition(sf::Vector2f(PANEL_X + 15, y));
+        _window.draw(*_text);
+        _text->setFillColor(sf::Color::White);
+        _text->setString(value);
+        _text->setPosition(sf::Vector2f(PANEL_X + 120, y));
+        _window.draw(*_text);
+        _text->setFillColor(sf::Color(200, 200, 200));
         y += 28.0f;
     };
 
@@ -328,44 +330,44 @@ void SFMLRenderer::drawInfoPanel(const GameState& state)
     drawLine("Grid:", std::to_string(state.grid().rows()) + "x" +
              std::to_string(state.grid().cols()));
 
-    _text.setCharacterSize(14);
+    _text->setCharacterSize(14);
 
     // 选中信息
     y += 20.0f;
     if (_hasSelection) {
-        _text.setFillColor(sf::Color(255, 220, 50));
-        _text.setString("Selected:");
-        _text.setPosition(sf::Vector2f(PANEL_X + 15, y));
-        _window.draw(_text);
+        _text->setFillColor(sf::Color(255, 220, 50));
+        _text->setString("Selected:");
+        _text->setPosition(sf::Vector2f(PANEL_X + 15, y));
+        _window.draw(*_text);
 
         const Cell& selCell = state.grid().at(_selectedRow, _selectedCol);
         std::string selStr;
         selStr += selCell.getLetter();
         selStr += std::to_string(selCell.getNumber());
-        _text.setString("(" + std::to_string(_selectedRow) + "," +
+        _text->setString("(" + std::to_string(_selectedRow) + "," +
                         std::to_string(_selectedCol) + ") " + selStr);
-        _text.setPosition(sf::Vector2f(PANEL_X + 90, y));
-        _window.draw(_text);
+        _text->setPosition(sf::Vector2f(PANEL_X + 90, y));
+        _window.draw(*_text);
         y += 24.0f;
 
         // 显示合法邻居数
         auto neighbors = getValidNeighbors(state.grid(), _selectedRow, _selectedCol);
-        _text.setFillColor(sf::Color(100, 255, 100));
-        _text.setString("Valid targets: " + std::to_string(neighbors.size()));
-        _text.setPosition(sf::Vector2f(PANEL_X + 15, y));
-        _window.draw(_text);
+        _text->setFillColor(sf::Color(100, 255, 100));
+        _text->setString("Valid targets: " + std::to_string(neighbors.size()));
+        _text->setPosition(sf::Vector2f(PANEL_X + 15, y));
+        _window.draw(*_text);
         y += 24.0f;
     }
 
     // 操作提示
     y = static_cast<float>(WINDOW_H) - 200.0f;
-    _text.setFillColor(sf::Color(150, 150, 150));
-    _text.setCharacterSize(12);
+    _text->setFillColor(sf::Color(150, 150, 150));
+    _text->setCharacterSize(12);
 
     auto drawHint = [&](const std::string& hint) {
-        _text.setString(hint);
-        _text.setPosition(sf::Vector2f(PANEL_X + 15, y));
-        _window.draw(_text);
+        _text->setString(hint);
+        _text->setPosition(sf::Vector2f(PANEL_X + 15, y));
+        _window.draw(*_text);
         y += 20.0f;
     };
 
@@ -377,7 +379,7 @@ void SFMLRenderer::drawInfoPanel(const GameState& state)
     drawHint("  S: Submit answer");
     drawHint("  Q/Esc: Back to menu");
 
-    _text.setCharacterSize(14);
+    _text->setCharacterSize(14);
 }
 
 // ================================================================
@@ -389,17 +391,17 @@ void SFMLRenderer::showMenu()
     _screen = UIScreen::Menu;
     _window.clear(sf::Color(20, 20, 30));
 
-    _text.setCharacterSize(36);
-    _text.setFillColor(sf::Color(255, 200, 50));
-    _text.setString("Mi Zhen Tu Wei");
-    centerText(_text, 0, 80, static_cast<float>(WINDOW_W), 50);
-    _window.draw(_text);
+    _text->setCharacterSize(36);
+    _text->setFillColor(sf::Color(255, 200, 50));
+    _text->setString("Mi Zhen Tu Wei");
+    centerText(*_text, 0, 80, static_cast<float>(WINDOW_W), 50);
+    _window.draw(*_text);
 
-    _text.setCharacterSize(20);
-    _text.setFillColor(sf::Color(200, 200, 200));
-    _text.setString("Matrix Breakthrough");
-    centerText(_text, 0, 120, static_cast<float>(WINDOW_W), 30);
-    _window.draw(_text);
+    _text->setCharacterSize(20);
+    _text->setFillColor(sf::Color(200, 200, 200));
+    _text->setString("Matrix Breakthrough");
+    centerText(*_text, 0, 120, static_cast<float>(WINDOW_W), 30);
+    _window.draw(*_text);
 
     // 菜单按钮
     struct Btn { std::string text; float y; UserAction action; };
@@ -411,7 +413,7 @@ void SFMLRenderer::showMenu()
 
     for (const auto& btn : buttons) {
         float bx = WINDOW_W / 2.0f - 180.0f;
-        sf::FloatRect btnRect(bx, btn.y, 360, 44);
+        sf::FloatRect btnRect({bx, btn.y}, {360, 44});
 
         _rect.setPosition(sf::Vector2f(bx, btn.y));
         _rect.setSize(sf::Vector2f(360, 44));
@@ -420,18 +422,18 @@ void SFMLRenderer::showMenu()
         _rect.setOutlineThickness(1.0f);
         _window.draw(_rect);
 
-        _text.setCharacterSize(18);
-        _text.setFillColor(sf::Color::White);
-        _text.setString(btn.text);
-        centerText(_text, bx, btn.y, 360, 44);
-        _window.draw(_text);
+        _text->setCharacterSize(18);
+        _text->setFillColor(sf::Color::White);
+        _text->setString(btn.text);
+        centerText(*_text, bx, btn.y, 360, 44);
+        _window.draw(*_text);
     }
 
-    _text.setCharacterSize(14);
-    _text.setFillColor(sf::Color(150, 150, 150));
-    _text.setString("Press 1-3 or click buttons");
-    centerText(_text, 0, 420, static_cast<float>(WINDOW_W), 30);
-    _window.draw(_text);
+    _text->setCharacterSize(14);
+    _text->setFillColor(sf::Color(150, 150, 150));
+    _text->setString("Press 1-3 or click buttons");
+    centerText(*_text, 0, 420, static_cast<float>(WINDOW_W), 30);
+    _window.draw(*_text);
 
     _window.display();
 }
@@ -446,11 +448,11 @@ void SFMLRenderer::showPuzzleList(const std::vector<Puzzle>& puzzles)
     _puzzleCount = static_cast<int>(puzzles.size());
     _window.clear(sf::Color(20, 20, 30));
 
-    _text.setCharacterSize(28);
-    _text.setFillColor(sf::Color(255, 200, 50));
-    _text.setString("Select Puzzle");
-    centerText(_text, 0, 50, static_cast<float>(WINDOW_W), 40);
-    _window.draw(_text);
+    _text->setCharacterSize(28);
+    _text->setFillColor(sf::Color(255, 200, 50));
+    _text->setString("Select Puzzle");
+    centerText(*_text, 0, 50, static_cast<float>(WINDOW_W), 40);
+    _window.draw(*_text);
 
     float startY = 130.0f;
     for (size_t i = 0; i < puzzles.size(); ++i) {
@@ -464,19 +466,19 @@ void SFMLRenderer::showPuzzleList(const std::vector<Puzzle>& puzzles)
         _rect.setOutlineThickness(1.0f);
         _window.draw(_rect);
 
-        _text.setCharacterSize(18);
-        _text.setFillColor(sf::Color::White);
-        _text.setString(std::to_string(i + 1) + ". " + puzzles[i].name());
-        _text.setPosition(sf::Vector2f(bx + 20, y + 6));
-        _window.draw(_text);
+        _text->setCharacterSize(18);
+        _text->setFillColor(sf::Color::White);
+        _text->setString(std::to_string(i + 1) + ". " + puzzles[i].name());
+        _text->setPosition(sf::Vector2f(bx + 20, y + 6));
+        _window.draw(*_text);
 
-        _text.setCharacterSize(13);
-        _text.setFillColor(sf::Color(160, 160, 160));
-        _text.setString(puzzles[i].id() + "  |  " +
+        _text->setCharacterSize(13);
+        _text->setFillColor(sf::Color(160, 160, 160));
+        _text->setString(puzzles[i].id() + "  |  " +
                         std::to_string(puzzles[i].gridSize()) + "x" +
                         std::to_string(puzzles[i].gridSize()));
-        _text.setPosition(sf::Vector2f(bx + 20, y + 30));
-        _window.draw(_text);
+        _text->setPosition(sf::Vector2f(bx + 20, y + 30));
+        _window.draw(*_text);
     }
 
     // 返回按钮
@@ -489,18 +491,18 @@ void SFMLRenderer::showPuzzleList(const std::vector<Puzzle>& puzzles)
     _rect.setOutlineThickness(1.0f);
     _window.draw(_rect);
 
-    _text.setCharacterSize(16);
-    _text.setFillColor(sf::Color::White);
-    _text.setString("B. Back to Menu");
-    centerText(_text, bx, backY, 200, 40);
-    _window.draw(_text);
+    _text->setCharacterSize(16);
+    _text->setFillColor(sf::Color::White);
+    _text->setString("B. Back to Menu");
+    centerText(*_text, bx, backY, 200, 40);
+    _window.draw(*_text);
 
-    _text.setCharacterSize(14);
-    _text.setFillColor(sf::Color(150, 150, 150));
-    _text.setString("Press 1-" + std::to_string(puzzles.size()) +
+    _text->setCharacterSize(14);
+    _text->setFillColor(sf::Color(150, 150, 150));
+    _text->setString("Press 1-" + std::to_string(puzzles.size()) +
                     " to select, B to go back");
-    centerText(_text, 0, backY + 60, static_cast<float>(WINDOW_W), 30);
-    _window.draw(_text);
+    centerText(*_text, 0, backY + 60, static_cast<float>(WINDOW_W), 30);
+    _window.draw(*_text);
 
     _window.display();
 }
@@ -514,22 +516,22 @@ void SFMLRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)
     _screen = UIScreen::Leaderboard;
     _window.clear(sf::Color(20, 20, 30));
 
-    _text.setCharacterSize(28);
-    _text.setFillColor(sf::Color(255, 200, 50));
-    _text.setString("Leaderboard");
-    centerText(_text, 0, 30, static_cast<float>(WINDOW_W), 40);
-    _window.draw(_text);
+    _text->setCharacterSize(28);
+    _text->setFillColor(sf::Color(255, 200, 50));
+    _text->setString("Leaderboard");
+    centerText(*_text, 0, 30, static_cast<float>(WINDOW_W), 40);
+    _window.draw(*_text);
 
     // 表头
     float headerY = 80.0f;
     float colX[] = {40.0f, 80.0f, 340.0f, 470.0f, 560.0f, 650.0f, 750.0f};
     const char* headers[] = {"#", "Player", "Puzzle", "Time(s)", "Steps", "Acc%", "Score"};
-    _text.setCharacterSize(14);
-    _text.setFillColor(sf::Color(200, 200, 200));
+    _text->setCharacterSize(14);
+    _text->setFillColor(sf::Color(200, 200, 200));
     for (int i = 0; i < 7; ++i) {
-        _text.setString(headers[i]);
-        _text.setPosition(sf::Vector2f(colX[i], headerY));
-        _window.draw(_text);
+        _text->setString(headers[i]);
+        _text->setPosition(sf::Vector2f(colX[i], headerY));
+        _window.draw(*_text);
     }
 
     // 分隔线
@@ -546,58 +548,58 @@ void SFMLRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)
 
         sf::Color rowColor = (i < 3) ? sf::Color(255, 220, 100)
                                      : sf::Color(200, 200, 200);
-        _text.setFillColor(rowColor);
-        _text.setCharacterSize(13);
+        _text->setFillColor(rowColor);
+        _text->setCharacterSize(13);
 
-        _text.setString(std::to_string(i + 1));
-        _text.setPosition(sf::Vector2f(colX[0], rowY));
-        _window.draw(_text);
+        _text->setString(std::to_string(i + 1));
+        _text->setPosition(sf::Vector2f(colX[0], rowY));
+        _window.draw(*_text);
 
-        _text.setString(r.playerName());
-        _text.setPosition(sf::Vector2f(colX[1], rowY));
-        _window.draw(_text);
+        _text->setString(r.playerName());
+        _text->setPosition(sf::Vector2f(colX[1], rowY));
+        _window.draw(*_text);
 
-        _text.setString(r.puzzleId());
-        _text.setPosition(sf::Vector2f(colX[2], rowY));
-        _window.draw(_text);
+        _text->setString(r.puzzleId());
+        _text->setPosition(sf::Vector2f(colX[2], rowY));
+        _window.draw(*_text);
 
         std::ostringstream ts;
         ts << std::fixed << std::setprecision(2) << r.timeSeconds();
-        _text.setString(ts.str());
-        _text.setPosition(sf::Vector2f(colX[3], rowY));
-        _window.draw(_text);
+        _text->setString(ts.str());
+        _text->setPosition(sf::Vector2f(colX[3], rowY));
+        _window.draw(*_text);
 
-        _text.setString(std::to_string(r.steps()));
-        _text.setPosition(sf::Vector2f(colX[4], rowY));
-        _window.draw(_text);
+        _text->setString(std::to_string(r.steps()));
+        _text->setPosition(sf::Vector2f(colX[4], rowY));
+        _window.draw(*_text);
 
         std::ostringstream as;
         as << std::fixed << std::setprecision(0) << (r.accuracy() * 100);
-        _text.setString(as.str());
-        _text.setPosition(sf::Vector2f(colX[5], rowY));
-        _window.draw(_text);
+        _text->setString(as.str());
+        _text->setPosition(sf::Vector2f(colX[5], rowY));
+        _window.draw(*_text);
 
-        _text.setFillColor(sf::Color(255, 200, 50));
-        _text.setString(std::to_string(r.score()));
-        _text.setPosition(sf::Vector2f(colX[6], rowY));
-        _window.draw(_text);
+        _text->setFillColor(sf::Color(255, 200, 50));
+        _text->setString(std::to_string(r.score()));
+        _text->setPosition(sf::Vector2f(colX[6], rowY));
+        _window.draw(*_text);
 
         rowY += 24.0f;
     }
 
     if (records.empty()) {
-        _text.setFillColor(sf::Color(150, 150, 150));
-        _text.setString("No records yet.");
-        _text.setPosition(sf::Vector2f(WINDOW_W / 2.0f - 80, rowY));
-        _window.draw(_text);
+        _text->setFillColor(sf::Color(150, 150, 150));
+        _text->setString("No records yet.");
+        _text->setPosition(sf::Vector2f(WINDOW_W / 2.0f - 80, rowY));
+        _window.draw(*_text);
     }
 
     // 底部提示
-    _text.setCharacterSize(14);
-    _text.setFillColor(sf::Color(150, 150, 150));
-    _text.setString("Press any key to return");
-    centerText(_text, 0, WINDOW_H - 50.0f, static_cast<float>(WINDOW_W), 30);
-    _window.draw(_text);
+    _text->setCharacterSize(14);
+    _text->setFillColor(sf::Color(150, 150, 150));
+    _text->setString("Press any key to return");
+    centerText(*_text, 0, WINDOW_H - 50.0f, static_cast<float>(WINDOW_W), 30);
+    _window.draw(*_text);
 
     _window.display();
 }
@@ -611,25 +613,25 @@ void SFMLRenderer::showResult(const ScoreRecord& record)
     _screen = UIScreen::Result;
     _window.clear(sf::Color(20, 20, 30));
 
-    _text.setCharacterSize(32);
-    _text.setFillColor(sf::Color(255, 200, 50));
-    _text.setString("Result");
-    centerText(_text, 0, 60, static_cast<float>(WINDOW_W), 50);
-    _window.draw(_text);
+    _text->setCharacterSize(32);
+    _text->setFillColor(sf::Color(255, 200, 50));
+    _text->setString("Result");
+    centerText(*_text, 0, 60, static_cast<float>(WINDOW_W), 50);
+    _window.draw(*_text);
 
     float y = 160.0f;
     auto drawRow = [&](const std::string& label, const std::string& value,
                        const sf::Color& vColor = sf::Color::White) {
-        _text.setCharacterSize(20);
-        _text.setFillColor(sf::Color(180, 180, 180));
-        _text.setString(label);
-        _text.setPosition(sf::Vector2f(WINDOW_W / 2.0f - 200.0f, y));
-        _window.draw(_text);
+        _text->setCharacterSize(20);
+        _text->setFillColor(sf::Color(180, 180, 180));
+        _text->setString(label);
+        _text->setPosition(sf::Vector2f(WINDOW_W / 2.0f - 200.0f, y));
+        _window.draw(*_text);
 
-        _text.setFillColor(vColor);
-        _text.setString(value);
-        _text.setPosition(sf::Vector2f(WINDOW_W / 2.0f + 20.0f, y));
-        _window.draw(_text);
+        _text->setFillColor(vColor);
+        _text->setString(value);
+        _text->setPosition(sf::Vector2f(WINDOW_W / 2.0f + 20.0f, y));
+        _window.draw(*_text);
         y += 40.0f;
     };
 
@@ -648,11 +650,11 @@ void SFMLRenderer::showResult(const ScoreRecord& record)
 
     drawRow("Score:", std::to_string(record.score()), sf::Color(255, 220, 50));
 
-    _text.setCharacterSize(14);
-    _text.setFillColor(sf::Color(150, 150, 150));
-    _text.setString("Press any key to continue");
-    centerText(_text, 0, WINDOW_H - 60.0f, static_cast<float>(WINDOW_W), 30);
-    _window.draw(_text);
+    _text->setCharacterSize(14);
+    _text->setFillColor(sf::Color(150, 150, 150));
+    _text->setString("Press any key to continue");
+    centerText(*_text, 0, WINDOW_H - 60.0f, static_cast<float>(WINDOW_W), 30);
+    _window.draw(*_text);
 
     _window.display();
 }
@@ -666,29 +668,28 @@ void SFMLRenderer::showMessage(const std::string& msg)
     _screen = UIScreen::Message;
     _window.clear(sf::Color(20, 20, 30));
 
-    _text.setCharacterSize(20);
-    _text.setFillColor(sf::Color::White);
-    _text.setString(msg);
-    centerText(_text, 0, WINDOW_H / 2.0f - 30, static_cast<float>(WINDOW_W), 40);
-    _window.draw(_text);
+    _text->setCharacterSize(20);
+    _text->setFillColor(sf::Color::White);
+    _text->setString(msg);
+    centerText(*_text, 0, WINDOW_H / 2.0f - 30, static_cast<float>(WINDOW_W), 40);
+    _window.draw(*_text);
 
-    _text.setCharacterSize(14);
-    _text.setFillColor(sf::Color(150, 150, 150));
-    _text.setString("Press any key to continue");
-    centerText(_text, 0, WINDOW_H / 2.0f + 20, static_cast<float>(WINDOW_W), 30);
-    _window.draw(_text);
+    _text->setCharacterSize(14);
+    _text->setFillColor(sf::Color(150, 150, 150));
+    _text->setString("Press any key to continue");
+    centerText(*_text, 0, WINDOW_H / 2.0f + 20, static_cast<float>(WINDOW_W), 30);
+    _window.draw(*_text);
 
     _window.display();
 
     // 阻塞等待用户按键或关闭窗口
     while (_window.isOpen()) {
-        sf::Event event;
-        while (_window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
+        while (const auto event = _window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
                 _window.close();
                 return;
             }
-            if (event.type == sf::Event::KeyPressed) {
+            if (event->is<sf::Event::KeyPressed>()) {
                 return;
             }
         }
@@ -700,62 +701,61 @@ std::string SFMLRenderer::promptPlayerName()
 {
     _window.clear(sf::Color(20, 20, 30));
 
-    _text.setCharacterSize(24);
-    _text.setFillColor(sf::Color(255, 200, 50));
-    _text.setString("Enter Your Name");
-    centerText(_text, 0, 200, static_cast<float>(WINDOW_W), 40);
-    _window.draw(_text);
+    _text->setCharacterSize(24);
+    _text->setFillColor(sf::Color(255, 200, 50));
+    _text->setString("Enter Your Name");
+    centerText(*_text, 0, 200, static_cast<float>(WINDOW_W), 40);
+    _window.draw(*_text);
 
-    _text.setCharacterSize(16);
-    _text.setFillColor(sf::Color(200, 200, 200));
-    _text.setString("Type your name and press Enter");
-    centerText(_text, 0, 260, static_cast<float>(WINDOW_W), 30);
-    _window.draw(_text);
+    _text->setCharacterSize(16);
+    _text->setFillColor(sf::Color(200, 200, 200));
+    _text->setString("Type your name and press Enter");
+    centerText(*_text, 0, 260, static_cast<float>(WINDOW_W), 30);
+    _window.draw(*_text);
 
     _window.display();
 
     // 输入循环
     std::string name;
     while (_window.isOpen()) {
-        sf::Event event;
-        while (_window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
+        while (const auto event = _window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
                 _window.close();
                 return "Player";
             }
-            if (event.type == sf::Event::TextEntered) {
-                if (event.text.unicode == '\r' || event.text.unicode == '\n') {
+            if (const auto* textEvt = event->getIf<sf::Event::TextEntered>()) {
+                if (textEvt->unicode == '\r' || textEvt->unicode == '\n') {
                     if (name.empty()) name = "Player";
                     return name;
                 }
-                if (event.text.unicode == '\b') {  // 退格
+                if (textEvt->unicode == '\b') {  // 退格
                     if (!name.empty()) name.pop_back();
-                } else if (event.text.unicode >= 32 && event.text.unicode < 127) {
+                } else if (textEvt->unicode >= 32 && textEvt->unicode < 127) {
                     if (name.size() < 30) {
-                        name += static_cast<char>(event.text.unicode);
+                        name += static_cast<char>(textEvt->unicode);
                     }
                 }
             }
 
             // 每次输入后重绘
             _window.clear(sf::Color(20, 20, 30));
-            _text.setCharacterSize(24);
-            _text.setFillColor(sf::Color(255, 200, 50));
-            _text.setString("Enter Your Name");
-            centerText(_text, 0, 200, static_cast<float>(WINDOW_W), 40);
-            _window.draw(_text);
+            _text->setCharacterSize(24);
+            _text->setFillColor(sf::Color(255, 200, 50));
+            _text->setString("Enter Your Name");
+            centerText(*_text, 0, 200, static_cast<float>(WINDOW_W), 40);
+            _window.draw(*_text);
 
-            _text.setCharacterSize(28);
-            _text.setFillColor(sf::Color::White);
-            _text.setString(name + "_");
-            centerText(_text, 0, 310, static_cast<float>(WINDOW_W), 40);
-            _window.draw(_text);
+            _text->setCharacterSize(28);
+            _text->setFillColor(sf::Color::White);
+            _text->setString(name + "_");
+            centerText(*_text, 0, 310, static_cast<float>(WINDOW_W), 40);
+            _window.draw(*_text);
 
-            _text.setCharacterSize(14);
-            _text.setFillColor(sf::Color(150, 150, 150));
-            _text.setString("Press Enter to confirm");
-            centerText(_text, 0, 370, static_cast<float>(WINDOW_W), 30);
-            _window.draw(_text);
+            _text->setCharacterSize(14);
+            _text->setFillColor(sf::Color(150, 150, 150));
+            _text->setString("Press Enter to confirm");
+            centerText(*_text, 0, 370, static_cast<float>(WINDOW_W), 30);
+            _window.draw(*_text);
 
             _window.display();
         }
@@ -789,19 +789,18 @@ std::vector<std::pair<int, int>> SFMLRenderer::promptStartingCells(
     _rect.setSize(sf::Vector2f(cellSz - 2, cellSz - 2));
 
     while (_window.isOpen()) {
-        sf::Event event;
-        while (_window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
+        while (const auto event = _window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
                 _window.close();
                 return starts;
             }
-            if (event.type == sf::Event::KeyPressed) {
-                switch (event.key.code) {
-                    case sf::Keyboard::Up:    if (curRow > 0) curRow--; break;
-                    case sf::Keyboard::Down:  if (curRow < rows - 1) curRow++; break;
-                    case sf::Keyboard::Left:  if (curCol > 0) curCol--; break;
-                    case sf::Keyboard::Right: if (curCol < cols - 1) curCol++; break;
-                    case sf::Keyboard::Space: {
+            if (const auto* keyEvt = event->getIf<sf::Event::KeyPressed>()) {
+                switch (keyEvt->code) {
+                    case sf::Keyboard::Key::Up:    if (curRow > 0) curRow--; break;
+                    case sf::Keyboard::Key::Down:  if (curRow < rows - 1) curRow++; break;
+                    case sf::Keyboard::Key::Left:  if (curCol > 0) curCol--; break;
+                    case sf::Keyboard::Key::Right: if (curCol < cols - 1) curCol++; break;
+                    case sf::Keyboard::Key::Space: {
                         auto it = std::find(starts.begin(), starts.end(),
                                            std::make_pair(curRow, curCol));
                         if (it != starts.end()) {
@@ -811,10 +810,10 @@ std::vector<std::pair<int, int>> SFMLRenderer::promptStartingCells(
                         }
                         break;
                     }
-                    case sf::Keyboard::Enter:
+                    case sf::Keyboard::Key::Enter:
                         if (static_cast<int>(starts.size()) == count) return starts;
                         break;
-                    case sf::Keyboard::Escape:
+                    case sf::Keyboard::Key::Escape:
                         return starts;
                     default: break;
                 }
@@ -824,12 +823,12 @@ std::vector<std::pair<int, int>> SFMLRenderer::promptStartingCells(
         // 绘制
         _window.clear(sf::Color(20, 20, 30));
 
-        _text.setCharacterSize(18);
-        _text.setFillColor(sf::Color(255, 200, 50));
-        _text.setString("Select " + std::to_string(count) +
+        _text->setCharacterSize(18);
+        _text->setFillColor(sf::Color(255, 200, 50));
+        _text->setString("Select " + std::to_string(count) +
                         " starting cells (Space=select, Enter=confirm)");
-        centerText(_text, 0, 10, static_cast<float>(WINDOW_W), 30);
-        _window.draw(_text);
+        centerText(*_text, 0, 10, static_cast<float>(WINDOW_W), 30);
+        _window.draw(*_text);
 
         // 显示已选
         std::ostringstream selStr;
@@ -838,11 +837,11 @@ std::vector<std::pair<int, int>> SFMLRenderer::promptStartingCells(
             if (i > 0) selStr << ", ";
             selStr << "(" << starts[i].first << "," << starts[i].second << ")";
         }
-        _text.setCharacterSize(13);
-        _text.setFillColor(sf::Color(200, 200, 200));
-        _text.setString(selStr.str());
-        centerText(_text, 0, 32, static_cast<float>(WINDOW_W), 20);
-        _window.draw(_text);
+        _text->setCharacterSize(13);
+        _text->setFillColor(sf::Color(200, 200, 200));
+        _text->setString(selStr.str());
+        centerText(*_text, 0, 32, static_cast<float>(WINDOW_W), 20);
+        _window.draw(*_text);
 
         // 绘制网格
         for (int r = 0; r < rows; ++r) {
@@ -885,11 +884,11 @@ std::vector<std::pair<int, int>> SFMLRenderer::promptStartingCells(
                     str += std::to_string(cell.getNumber());
                     unsigned fs = static_cast<unsigned>(cellSz * 0.5f);
                     if (fs < 8) fs = 8;
-                    _text.setCharacterSize(fs);
-                    _text.setFillColor(sf::Color::White);
-                    _text.setString(str);
-                    centerText(_text, x, y, cellSz - 2, cellSz - 2);
-                    _window.draw(_text);
+                    _text->setCharacterSize(fs);
+                    _text->setFillColor(sf::Color::White);
+                    _text->setString(str);
+                    centerText(*_text, x, y, cellSz - 2, cellSz - 2);
+                    _window.draw(*_text);
                 }
             }
         }
@@ -906,20 +905,19 @@ std::vector<std::pair<int, int>> SFMLRenderer::promptStartingCells(
 UserAction SFMLRenderer::waitForAction()
 {
     while (_window.isOpen()) {
-        sf::Event event;
-        while (_window.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
+        while (const auto event = _window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
                 _window.close();
                 return UserAction::QUIT;
             }
 
-            if (event.type == sf::Event::KeyPressed) {
-                UserAction a = processKeyEvent(event);
+            if (const auto* keyEvt = event->getIf<sf::Event::KeyPressed>()) {
+                UserAction a = processKeyEvent(*keyEvt);
                 if (a != UserAction::NONE) return a;
             }
 
-            if (event.type == sf::Event::MouseButtonPressed) {
-                UserAction a = processMouseEvent(event);
+            if (const auto* mouseEvt = event->getIf<sf::Event::MouseButtonPressed>()) {
+                UserAction a = processMouseEvent(*mouseEvt);
                 if (a != UserAction::NONE) return a;
             }
         }
@@ -930,23 +928,23 @@ UserAction SFMLRenderer::waitForAction()
     return UserAction::QUIT;
 }
 
-UserAction SFMLRenderer::processKeyEvent(const sf::Event& event)
+UserAction SFMLRenderer::processKeyEvent(const sf::Event::KeyPressed& keyEvent)
 {
-    switch (event.key.code) {
-        case sf::Keyboard::Up:
+    switch (keyEvent.code) {
+        case sf::Keyboard::Key::Up:
             if (_cursorRow > 0) _cursorRow--;
             return UserAction::NONE;  // 内化：不干扰 Controller
-        case sf::Keyboard::Down:
+        case sf::Keyboard::Key::Down:
             if (_cursorRow < _gridRows - 1) _cursorRow++;
             return UserAction::NONE;
-        case sf::Keyboard::Left:
+        case sf::Keyboard::Key::Left:
             if (_cursorCol > 0) _cursorCol--;
             return UserAction::NONE;
-        case sf::Keyboard::Right:
+        case sf::Keyboard::Key::Right:
             if (_cursorCol < _gridCols - 1) _cursorCol++;
             return UserAction::NONE;
-        case sf::Keyboard::Enter: return UserAction::CONFIRM;
-        case sf::Keyboard::Space:
+        case sf::Keyboard::Key::Enter: return UserAction::CONFIRM;
+        case sf::Keyboard::Key::Space:
             // 两段式：无选中→选中；同格再按→取消；异格再按→合并
             if (!_hasSelection) {
                 _selectedRow = _cursorRow;
@@ -960,39 +958,39 @@ UserAction SFMLRenderer::processKeyEvent(const sf::Event& event)
             }
             _hasSelection = false;
             return UserAction::SELECT_CELL;
-        case sf::Keyboard::Escape:
+        case sf::Keyboard::Key::Escape:
             // 先清除选中态，已无选中则返回 BACK
             if (_hasSelection) {
                 _hasSelection = false;
                 return UserAction::NONE;
             }
             return UserAction::BACK;
-        case sf::Keyboard::S:     return UserAction::SUBMIT;
-        case sf::Keyboard::Q:     return UserAction::QUIT;
-        case sf::Keyboard::L:     return UserAction::VIEW_LEADERBOARD;
-        case sf::Keyboard::Num1: case sf::Keyboard::Numpad1:
+        case sf::Keyboard::Key::S:     return UserAction::SUBMIT;
+        case sf::Keyboard::Key::Q:     return UserAction::QUIT;
+        case sf::Keyboard::Key::L:     return UserAction::VIEW_LEADERBOARD;
+        case sf::Keyboard::Key::Num1: case sf::Keyboard::Key::Numpad1:
             return UserAction::SELECT_PUZZLE_1;
-        case sf::Keyboard::Num2: case sf::Keyboard::Numpad2:
+        case sf::Keyboard::Key::Num2: case sf::Keyboard::Key::Numpad2:
             return UserAction::SELECT_PUZZLE_2;
-        case sf::Keyboard::Num3: case sf::Keyboard::Numpad3:
+        case sf::Keyboard::Key::Num3: case sf::Keyboard::Key::Numpad3:
             return UserAction::SELECT_PUZZLE_3;
-        case sf::Keyboard::Num4: case sf::Keyboard::Numpad4:
+        case sf::Keyboard::Key::Num4: case sf::Keyboard::Key::Numpad4:
             return UserAction::SELECT_PUZZLE_4;
-        case sf::Keyboard::Num5: case sf::Keyboard::Numpad5:
+        case sf::Keyboard::Key::Num5: case sf::Keyboard::Key::Numpad5:
             return UserAction::SELECT_PUZZLE_5;
-        case sf::Keyboard::B:
+        case sf::Keyboard::Key::B:
             return UserAction::BACK;
         default:
             return UserAction::NONE;
     }
 }
 
-UserAction SFMLRenderer::processMouseEvent(const sf::Event& event)
+UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& mouseEvent)
 {
-    if (event.mouseButton.button != sf::Mouse::Left) return UserAction::NONE;
+    if (mouseEvent.button != sf::Mouse::Button::Left) return UserAction::NONE;
 
-    int mx = event.mouseButton.x;
-    int my = event.mouseButton.y;
+    int mx = mouseEvent.position.x;
+    int my = mouseEvent.position.y;
 
     switch (_screen) {
 
@@ -1175,8 +1173,8 @@ void SFMLRenderer::drawRect(float x, float y, float w, float h,
 void SFMLRenderer::centerText(sf::Text& text, float x, float y, float w, float h)
 {
     sf::FloatRect bounds = text.getLocalBounds();
-    float tx = x + (w - bounds.width) / 2.0f - bounds.left;
-    float ty = y + (h - bounds.height) / 2.0f - bounds.top;
+    float tx = x + (w - bounds.size.x) / 2.0f - bounds.position.x;
+    float ty = y + (h - bounds.size.y) / 2.0f - bounds.position.y;
     text.setPosition(sf::Vector2f(tx, ty));
 }
 
