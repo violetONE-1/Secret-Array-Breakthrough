@@ -173,12 +173,10 @@ void SFMLRenderer::drawGrid(const Grid& grid,
         _window.draw(*_text);
     }
 
-    // 收集有效邻居和空格邻居（如果选中了格子）
+    // 收集有效邻居（如果选中了格子）
     std::vector<std::pair<int, int>> validNeighbors;
-    std::vector<std::pair<int, int>> emptyNeighbors;
     if (_hasSelection) {
         validNeighbors = getValidNeighbors(grid, _selectedRow, _selectedCol);
-        emptyNeighbors = getEmptyNeighbors(grid, _selectedRow, _selectedCol);
     }
 
     // 绘制每个格子
@@ -195,13 +193,6 @@ void SFMLRenderer::drawGrid(const Grid& grid,
             for (const auto& n : validNeighbors) {
                 if (n.first == r && n.second == c) {
                     isValidTarget = true;
-                    break;
-                }
-            }
-            bool isValidSlideTarget = false;
-            for (const auto& n : emptyNeighbors) {
-                if (n.first == r && n.second == c) {
-                    isValidSlideTarget = true;
                     break;
                 }
             }
@@ -247,22 +238,12 @@ void SFMLRenderer::drawGrid(const Grid& grid,
                 _window.draw(_rect);
             }
 
-            // 有效目标高亮（绿色边框 — 可合并）
+            // 有效目标高亮（绿色边框）
             if (isValidTarget) {
                 _rect.setPosition(pos);
                 _rect.setSize(sf::Vector2f(_cellSize - 2, _cellSize - 2));
                 _rect.setFillColor(sf::Color::Transparent);
                 _rect.setOutlineColor(sf::Color(40, 180, 40));
-                _rect.setOutlineThickness(2.5f);
-                _window.draw(_rect);
-            }
-
-            // 空格邻居高亮（蓝色边框 — 可滑入）
-            if (isValidSlideTarget) {
-                _rect.setPosition(pos);
-                _rect.setSize(sf::Vector2f(_cellSize - 2, _cellSize - 2));
-                _rect.setFillColor(sf::Color::Transparent);
-                _rect.setOutlineColor(sf::Color(60, 140, 230));
                 _rect.setOutlineThickness(2.5f);
                 _window.draw(_rect);
             }
@@ -420,8 +401,8 @@ void SFMLRenderer::drawInfoPanel(const GameState& state)
     drawHint("Controls:");
     drawHint("  Arrow keys: Move cursor");
     drawHint("  Click: Select cell");
-    drawHint("  Click neighbor: Merge / Slide");
-    drawHint("  Enter/Space: Merge or slide");
+    drawHint("  Click neighbor: Merge");
+    drawHint("  Enter/Space: Merge 1st valid");
     drawHint("  S: Submit answer");
     drawHint("  E: AI move (one step)");
     drawHint("  Q/Esc: Back to menu");
@@ -451,10 +432,9 @@ void SFMLRenderer::showMenu()
     // 菜单按钮
     struct Btn { std::string text; float y; UserAction action; };
     Btn buttons[] = {
-        {"1. Start Game (Select Puzzle)", 220, UserAction::SELECT_PUZZLE_1},
-        {"2. View Leaderboard",          290, UserAction::VIEW_LEADERBOARD},
-        {"3. VS AI Battle",              360, UserAction::VS_AI_NORMAL},
-        {"4. Exit",                      430, UserAction::QUIT}
+        {"1. Start Game (Select Puzzle)", 240, UserAction::SELECT_PUZZLE_1},
+        {"2. View Leaderboard",          310, UserAction::VIEW_LEADERBOARD},
+        {"3. Exit",                      380, UserAction::QUIT}
     };
 
     for (const auto& btn : buttons) {
@@ -476,166 +456,8 @@ void SFMLRenderer::showMenu()
 
     _text->setCharacterSize(14);
     _text->setFillColor(sf::Color(140, 140, 160));
-    _text->setString("Press 1-4 or click buttons  |  F11: Toggle fullscreen");
-    centerText(*_text, 0, 500, ww, 30);
-    _window.draw(*_text);
-
-    _window.display();
-}
-
-// ================================================================
-//  VS AI 难度选择界面
-// ================================================================
-
-void SFMLRenderer::showVSAIMenu()
-{
-    _screen = UIScreen::VSAIMenu;
-    _window.clear(sf::Color(215, 228, 245));
-
-    auto winSize = _window.getSize();
-    float ww = static_cast<float>(winSize.x);
-
-    _text->setCharacterSize(32);
-    _text->setFillColor(sf::Color(30, 70, 170));
-    _text->setString("VS AI Battle");
-    centerText(*_text, 0, 100, ww, 50);
-    _window.draw(*_text);
-
-    _text->setCharacterSize(18);
-    _text->setFillColor(sf::Color(80, 80, 100));
-    _text->setString("Same puzzle. Who scores higher?");
-    centerText(*_text, 0, 160, ww, 30);
-    _window.draw(*_text);
-
-    struct Btn { std::string text; float y; UserAction action; };
-    Btn buttons[] = {
-        {"1. Normal Mode  (AI: Random)",  240, UserAction::SELECT_PUZZLE_1},
-        {"2. Advanced Mode (AI: Greedy)", 320, UserAction::SELECT_PUZZLE_2},
-        {"3. Back to Menu",               400, UserAction::BACK},
-    };
-
-    for (const auto& btn : buttons) {
-        float bx = ww / 2.0f - 240.0f;
-
-        _rect.setPosition(sf::Vector2f(bx, btn.y));
-        _rect.setSize(sf::Vector2f(480, 54));
-        _rect.setFillColor(sf::Color::White);
-        _rect.setOutlineColor(sf::Color(40, 120, 220));
-        _rect.setOutlineThickness(2.0f);
-        _window.draw(_rect);
-
-        _text->setCharacterSize(18);
-        _text->setFillColor(sf::Color(20, 20, 40));
-        _text->setString(btn.text);
-        centerText(*_text, bx, btn.y, 480, 54);
-        _window.draw(*_text);
-    }
-
-    _text->setCharacterSize(14);
-    _text->setFillColor(sf::Color(140, 140, 160));
     _text->setString("Press 1-3 or click buttons  |  F11: Toggle fullscreen");
-    centerText(*_text, 0, 480, ww, 30);
-    _window.draw(*_text);
-
-    _window.display();
-}
-
-// ================================================================
-//  VS AI 对战结果界面
-// ================================================================
-
-void SFMLRenderer::showVSResult(const ScoreRecord& playerRecord,
-                                 const ScoreRecord& aiRecord,
-                                 const std::string& winner)
-{
-    _screen = UIScreen::VSResult;
-    _window.clear(sf::Color(215, 228, 245));
-
-    auto winSize = _window.getSize();
-    float ww = static_cast<float>(winSize.x);
-
-    // 标题
-    _text->setCharacterSize(30);
-    _text->setFillColor(sf::Color(30, 70, 170));
-    _text->setString("VS AI Results");
-    centerText(*_text, 0, 30, ww, 50);
-    _window.draw(*_text);
-
-    // 表头
-    float headerY = 90.0f;
-    float colX[] = {100.0f, 300.0f, 700.0f};
-    _text->setCharacterSize(20);
-    _text->setFillColor(sf::Color(80, 80, 100));
-    _text->setString("Player");
-    _text->setPosition(sf::Vector2f(colX[0] + 70, headerY));
-    _window.draw(*_text);
-    _text->setString("AI");
-    _text->setPosition(sf::Vector2f(colX[1] + 70, headerY));
-    _window.draw(*_text);
-
-    auto drawStatRow = [&](const std::string& label, const std::string& pVal,
-                            const std::string& aVal, float y, bool highlight) {
-        _text->setCharacterSize(18);
-        sf::Color c = highlight ? sf::Color(200, 130, 20) : sf::Color(60, 60, 80);
-        _text->setFillColor(c);
-        _text->setString(label);
-        _text->setPosition(sf::Vector2f(colX[0], y));
-        _window.draw(*_text);
-        _text->setString(pVal);
-        _text->setPosition(sf::Vector2f(colX[0] + 120, y));
-        _window.draw(*_text);
-        _text->setString(aVal);
-        _text->setPosition(sf::Vector2f(colX[1] + 120, y));
-        _window.draw(*_text);
-    };
-
-    float rowY = 130.0f;
-    drawStatRow("Name:", playerRecord.playerName(), aiRecord.playerName(), rowY, false);
-    rowY += 36;
-    drawStatRow("Time(s):",
-        std::to_string(static_cast<int>(playerRecord.timeSeconds())),
-        std::to_string(static_cast<int>(aiRecord.timeSeconds())), rowY, false);
-    rowY += 36;
-    drawStatRow("Steps:",
-        std::to_string(playerRecord.steps()),
-        std::to_string(aiRecord.steps()), rowY, false);
-    rowY += 36;
-
-    std::ostringstream pa, aa;
-    pa << static_cast<int>(playerRecord.accuracy() * 100) << "%";
-    aa << static_cast<int>(aiRecord.accuracy() * 100) << "%";
-    drawStatRow("Accuracy:", pa.str(), aa.str(), rowY, false);
-    rowY += 36;
-
-    drawStatRow("Score:",
-        std::to_string(playerRecord.score()),
-        std::to_string(aiRecord.score()), rowY, true);
-
-    // 胜负
-    float resultY = rowY + 50;
-    _text->setCharacterSize(28);
-    std::string resultText;
-    sf::Color resultColor;
-    if (winner == "player") {
-        resultText = "You Win!";
-        resultColor = sf::Color(40, 160, 40);
-    } else if (winner == "ai") {
-        resultText = "AI Wins!";
-        resultColor = sf::Color(200, 40, 40);
-    } else {
-        resultText = "Draw!";
-        resultColor = sf::Color(200, 160, 40);
-    }
-    _text->setFillColor(resultColor);
-    _text->setString(resultText);
-    centerText(*_text, 0, resultY, ww, 50);
-    _window.draw(*_text);
-
-    // 底部提示
-    _text->setCharacterSize(14);
-    _text->setFillColor(sf::Color(140, 140, 160));
-    _text->setString("Press any key to return to menu");
-    centerText(*_text, 0, static_cast<float>(winSize.y) - 50, ww, 30);
+    centerText(*_text, 0, 470, ww, 30);
     _window.draw(*_text);
 
     _window.display();
@@ -1445,10 +1267,9 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
             return mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
         };
 
-        if (inside(220.0f))      return UserAction::SELECT_PUZZLE_1;
-        if (inside(290.0f))      return UserAction::VIEW_LEADERBOARD;
-        if (inside(360.0f))      return UserAction::VS_AI_NORMAL;
-        if (inside(430.0f))      return UserAction::QUIT;
+        if (inside(240.0f))      return UserAction::SELECT_PUZZLE_1;
+        if (inside(310.0f))      return UserAction::VIEW_LEADERBOARD;
+        if (inside(380.0f))      return UserAction::QUIT;
         break;
     }
 
@@ -1484,23 +1305,8 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
         break;
     }
 
-    case UIScreen::VSAIMenu: {
-        float ww = static_cast<float>(_window.getSize().x);
-        float bx = ww / 2.0f - 240.0f;
-        float bw = 480.0f, bh = 54.0f;
-
-        auto inside = [&](float by) {
-            return mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
-        };
-
-        if (inside(240.0f))      return UserAction::SELECT_PUZZLE_1;
-        if (inside(320.0f))      return UserAction::SELECT_PUZZLE_2;
-        if (inside(400.0f))      return UserAction::BACK;
-        break;
-    }
-
     default:
-        // Leaderboard / Result / Message / NamePrompt / VSResult：任意点击视为确认/继续
+        // Leaderboard / Result / Message / NamePrompt：任意点击视为确认/继续
         return UserAction::CONFIRM;
     }
 
@@ -1547,6 +1353,86 @@ std::vector<std::pair<int, int>> SFMLRenderer::getValidNeighbors(
     std::vector<std::pair<int, int>> result;
     if (row < 0 || col < 0) return result;
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     const Cell& center = grid.at(row, col);
     if (center.isEmpty()) return result;
 
@@ -1557,28 +1443,6 @@ std::vector<std::pair<int, int>> SFMLRenderer::getValidNeighbors(
         if (nr >= 0 && nr < grid.rows() && nc >= 0 && nc < grid.cols()) {
             const Cell& neighbor = grid.at(nr, nc);
             if (!neighbor.isEmpty() && MergeRule::canMerge(center, neighbor)) {
-                result.emplace_back(nr, nc);
-            }
-        }
-    }
-    return result;
-}
-
-std::vector<std::pair<int, int>> SFMLRenderer::getEmptyNeighbors(
-    const Grid& grid, int row, int col) const
-{
-    std::vector<std::pair<int, int>> result;
-    if (row < 0 || col < 0) return result;
-
-    const Cell& center = grid.at(row, col);
-    if (center.isEmpty()) return result;
-
-    static const int dirs[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
-    for (int d = 0; d < 4; ++d) {
-        int nr = row + dirs[d][0];
-        int nc = col + dirs[d][1];
-        if (nr >= 0 && nr < grid.rows() && nc >= 0 && nc < grid.cols()) {
-            if (grid.at(nr, nc).isEmpty()) {
                 result.emplace_back(nr, nc);
             }
         }
