@@ -1502,4 +1502,156 @@ void SFMLRenderer::centerText(sf::Text& text, float x, float y, float w, float h
     text.setPosition(sf::Vector2f(tx, ty));
 }
 
+// ================================================================
+//  VS AI 难度选择界面
+// ================================================================
+
+void SFMLRenderer::showVSAIMenu()
+{
+    _screen = UIScreen::VSAIMenu;
+    _window.clear(sf::Color(215, 228, 245));
+
+    auto winSize = _window.getSize();
+    float ww = static_cast<float>(winSize.x);
+
+    _text->setCharacterSize(32);
+    _text->setFillColor(sf::Color(30, 70, 170));
+    _text->setString("VS AI");
+    centerText(*_text, 0, 100, ww, 50);
+    _window.draw(*_text);
+
+    struct Btn { std::string text; float y; };
+    Btn buttons[] = {
+        {"1. Normal Mode (AI Random)",   240},
+        {"2. Advanced Mode (AI Greedy)", 310},
+        {"3. Back to Menu",              380}
+    };
+
+    for (const auto& btn : buttons) {
+        float bx = ww / 2.0f - 240.0f;
+
+        _rect.setPosition(sf::Vector2f(bx, btn.y));
+        _rect.setSize(sf::Vector2f(480, 50));
+        _rect.setFillColor(sf::Color::White);
+        _rect.setOutlineColor(sf::Color(40, 120, 220));
+        _rect.setOutlineThickness(2.0f);
+        _window.draw(_rect);
+
+        _text->setCharacterSize(18);
+        _text->setFillColor(sf::Color(20, 20, 40));
+        _text->setString(btn.text);
+        centerText(*_text, bx, btn.y, 480, 50);
+        _window.draw(*_text);
+    }
+
+    _text->setCharacterSize(14);
+    _text->setFillColor(sf::Color(140, 140, 160));
+    _text->setString("Press 1-3 or click buttons to choose");
+    centerText(*_text, 0, 470, ww, 30);
+    _window.draw(*_text);
+
+    _window.display();
+}
+
+// ================================================================
+//  VS AI 对战结果界面
+// ================================================================
+
+void SFMLRenderer::showVSResult(const ScoreRecord& playerRecord,
+                                 const ScoreRecord& aiRecord,
+                                 const std::string& winner)
+{
+    _screen = UIScreen::VSResult;
+    auto winSize = _window.getSize();
+    float ww = static_cast<float>(winSize.x);
+    float wh = static_cast<float>(winSize.y);
+
+    while (_window.isOpen()) {
+        while (const auto event = _window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
+                _window.close();
+                return;
+            }
+            if (event->is<sf::Event::KeyPressed>()) return;
+            if (event->is<sf::Event::MouseButtonPressed>()) return;
+        }
+
+        _window.clear(sf::Color(215, 228, 245));
+
+        _text->setCharacterSize(28);
+        _text->setFillColor(sf::Color(30, 70, 170));
+        _text->setString("VS AI Result");
+        centerText(*_text, 0, 40, ww, 50);
+        _window.draw(*_text);
+
+        _text->setCharacterSize(22);
+        _text->setFillColor(sf::Color(200, 130, 20));
+        _text->setString("Winner: " + winner);
+        centerText(*_text, 0, 110, ww, 40);
+        _window.draw(*_text);
+
+        float colX[] = {160.0f, 350.0f, 540.0f};
+        float headerY = 170.0f;
+
+        const char* headers[] = {"Stat", "Player", "AI"};
+        _text->setCharacterSize(16);
+        _text->setFillColor(sf::Color(60, 60, 80));
+        for (int i = 0; i < 3; ++i) {
+            _text->setString(headers[i]);
+            _text->setPosition(sf::Vector2f(colX[i], headerY));
+            _window.draw(*_text);
+        }
+
+        _rect.setPosition(sf::Vector2f(colX[0], headerY + 22));
+        _rect.setSize(sf::Vector2f(ww - 2 * colX[0], 1));
+        _rect.setFillColor(sf::Color(180, 180, 200));
+        _rect.setOutlineThickness(0);
+        _window.draw(_rect);
+
+        auto drawRow = [&](float y, const std::string& label,
+                           const std::string& pVal, const std::string& aVal,
+                           const sf::Color& color = sf::Color(20, 20, 40)) {
+            _text->setCharacterSize(16);
+            _text->setFillColor(sf::Color(80, 80, 100));
+            _text->setString(label);
+            _text->setPosition(sf::Vector2f(colX[0], y));
+            _window.draw(*_text);
+            _text->setFillColor(color);
+            _text->setString(pVal);
+            _text->setPosition(sf::Vector2f(colX[1], y));
+            _window.draw(*_text);
+            _text->setString(aVal);
+            _text->setPosition(sf::Vector2f(colX[2], y));
+            _window.draw(*_text);
+        };
+
+        float rowY = headerY + 30.0f;
+        drawRow(rowY, "Name:", playerRecord.playerName(), aiRecord.playerName());
+        rowY += 28.0f;
+        {
+            std::ostringstream pTime, aTime;
+            pTime << static_cast<int>(playerRecord.timeSeconds()) << " s";
+            aTime << static_cast<int>(aiRecord.timeSeconds()) << " s";
+            drawRow(rowY, "Time:", pTime.str(), aTime.str());
+        }
+        rowY += 28.0f;
+        drawRow(rowY, "Steps:",
+                std::to_string(playerRecord.steps()),
+                std::to_string(aiRecord.steps()));
+        rowY += 28.0f;
+        drawRow(rowY, "Score:",
+                std::to_string(playerRecord.score()),
+                std::to_string(aiRecord.score()),
+                sf::Color(200, 130, 20));
+
+        _text->setCharacterSize(14);
+        _text->setFillColor(sf::Color(140, 140, 160));
+        _text->setString("Press any key or click to return");
+        centerText(*_text, 0, wh - 60.0f, ww, 30);
+        _window.draw(*_text);
+
+        _window.display();
+    }
+}
+
 #endif // HAS_GUI
