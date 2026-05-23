@@ -12,6 +12,7 @@
 #define IRENDERER_HPP
 
 #include "core/GameState.hpp"
+#include "core/Move.hpp"
 #include "model/Puzzle.hpp"
 #include "model/ScoreRecord.hpp"
 #include <utility>
@@ -61,8 +62,9 @@ public:
     /** 显示排行榜 */
     virtual void showLeaderboard(const std::vector<ScoreRecord>& records) = 0;
 
-    /** 显示单次答题结果 */
-    virtual void showResult(const ScoreRecord& record) = 0;
+    /** 显示单次答题结果，含操作历史 */
+    virtual void showResult(const ScoreRecord& record,
+                            const std::vector<Move>& moveHistory) = 0;
 
     /** 显示临时消息并等待用户按键 */
     virtual void showMessage(const std::string& msg) = 0;
@@ -88,6 +90,10 @@ public:
      *  用于两段式合并：先选中源格，再选目标格。
      *  仅 GUI 渲染器需要实现。 */
     virtual std::pair<int, int> getSelectedCell() const { return {-1, -1}; }
+
+    /** 清除渲染器内部的格子选中状态。
+     *  由 Controller 在成功执行合并后调用。 */
+    virtual void clearSelection() {}
 
     /** 检查窗口/控制台是否仍然有效 */
     virtual bool isOpen() const = 0;

@@ -637,58 +637,164 @@ void SFMLRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)
 //  结果展示
 // ================================================================
 
-void SFMLRenderer::showResult(const ScoreRecord& record)
+void SFMLRenderer::showResult(const ScoreRecord& record,
+                               const std::vector<Move>& moveHistory)
 {
     _screen = UIScreen::Result;
-    _window.clear(sf::Color(215, 228, 245));
-
     auto winSize = _window.getSize();
     float ww = static_cast<float>(winSize.x);
+    float wh = static_cast<float>(winSize.y);
 
-    _text->setCharacterSize(32);
-    _text->setFillColor(sf::Color(30, 70, 170));
-    _text->setString("Result");
-    centerText(*_text, 0, 60, ww, 50);
-    _window.draw(*_text);
+    int historyScrollOffset = 0;
+    sf::RectangleShape scrollTrack, scrollThumb;
 
-    float y = 160.0f;
-    auto drawRow = [&](const std::string& label, const std::string& value,
-                       const sf::Color& vColor = sf::Color(20, 20, 40)) {
-        _text->setCharacterSize(20);
-        _text->setFillColor(sf::Color(80, 80, 100));
-        _text->setString(label);
-        _text->setPosition(sf::Vector2f(ww / 2.0f - 200.0f, y));
-        _window.draw(*_text);
-
-        _text->setFillColor(vColor);
-        _text->setString(value);
-        _text->setPosition(sf::Vector2f(ww / 2.0f + 20.0f, y));
-        _window.draw(*_text);
-        y += 40.0f;
+    auto cellName = [](int row, int col) -> std::string {
+        return std::string(1, static_cast<char>('A' + col))
+               + std::to_string(row + 1);
     };
 
-    drawRow("Player:", record.playerName());
-    drawRow("Puzzle:", record.puzzleId());
+    while (_window.isOpen()) {
+        while (const auto event = _window.pollEvent()) {
+            if (event->is<sf::Event::Closed>()) {
+                _window.close();
+                return;
+            }
+            if (event->is<sf::Event::KeyPressed>()) {
+                return;
+            }
+            if (const auto* wheelEvt =
+                    event->getIf<sf::Event::MouseWheelScrolled>()) {
+                historyScrollOffset -= static_cast<int>(wheelEvt->delta * 3);
+            }
+        }
 
-    std::ostringstream ts;
-    ts << static_cast<int>(record.timeSeconds()) << " seconds";
-    drawRow("Time:", ts.str());
+        // 计算可见行数
+        const float histListY = 160.0f;
+        const float histListH = wh - 240.0f;
+        const float lineHeight = 22.0f;
+        int maxVisible = static_cast<int>(histListH / lineHeight);
+        int totalMoves = static_cast<int>(moveHistory.size());
+        int maxScroll = std::max(0, totalMoves - maxVisible);
+        if (historyScrollOffset < 0) historyScrollOffset = 0;
+        if (historyScrollOffset > maxScroll) historyScrollOffset = maxScroll;
 
-    drawRow("Steps:", std::to_string(record.steps()));
+        // ---- 绘制 ----
+        _window.clear(sf::Color(215, 228, 245));
 
-    std::ostringstream as;
-    as << std::fixed << std::setprecision(0) << (record.accuracy() * 100) << "%";
-    drawRow("Accuracy:", as.str());
+        // 标题
+        _text->setCharacterSize(30);
+        _text->setFillColor(sf::Color(30, 70, 170));
+        _text->setString("Result");
+        centerText(*_text, 0, 40, ww, 50);
+        _window.draw(*_text);
 
-    drawRow("Score:", std::to_string(record.score()), sf::Color(200, 130, 20));
+        // ---- 左侧：得分数据面板 ----
+        float leftX = 80.0f;
+        float statY = 120.0f;
+        auto drawStat = [&](const std::string& label, const std::string& value,
+                            const sf::Color& vColor = sf::Color(20, 20, 40)) {
+            _text->setCharacterSize(20);
+            _text->setFillColor(sf::Color(80, 80, 100));
+            _text->setString(label);
+            _text->setPosition(sf::Vector2f(leftX, statY));
+            _window.draw(*_text);
 
-    _text->setCharacterSize(14);
-    _text->setFillColor(sf::Color(140, 140, 160));
-    _text->setString("Press any key to continue");
-    centerText(*_text, 0, static_cast<float>(winSize.y) - 60.0f, ww, 30);
-    _window.draw(*_text);
+            _text->setFillColor(vColor);
+            _text->setString(value);
+            _text->setPosition(sf::Vector2f(leftX + 150.0f, statY));
+            _window.draw(*_text);
+            statY += 42.0f;
+        };
 
-    _window.display();
+        drawStat("Player:", record.playerName());
+        drawStat("Puzzle:", record.puzzleId());
+        {
+            std::ostringstream ts;
+            ts << static_cast<int>(record.timeSeconds()) << " seconds";
+            drawStat("Time:", ts.str());
+        }
+        drawStat("Steps:", std::to_string(record.steps()));
+        {
+            std::ostringstream as;
+            as << std::fixed << std::setprecision(0)
+               << (record.accuracy() * 100) << "%";
+            drawStat("Accuracy:", as.str());
+        }
+        drawStat("Score:", std::to_string(record.score()), sf::Color(200, 130, 20));
+
+        // ---- 右侧：操作历史面板 ----
+        float histX = 540.0f;
+        float histW = ww - histX - 60.0f;
+
+        _text->setCharacterSize(22);
+        _text->setFillColor(sf::Color(60, 60, 80));
+        _text->setString("Operation History");
+        _text->setPosition(sf::Vector2f(histX, 100.0f));
+        _window.draw(*_text);
+
+        // 历史区域背景
+        _rect.setPosition(sf::Vector2f(histX, histListY));
+        _rect.setSize(sf::Vector2f(histW, histListH));
+        _rect.setFillColor(sf::Color(225, 236, 250));
+        _rect.setOutlineColor(sf::Color(180, 190, 210));
+        _rect.setOutlineThickness(1.0f);
+        _window.draw(_rect);
+
+        // 绘制可见的每一步
+        _text->setCharacterSize(16);
+        for (int i = 0; i < maxVisible && (historyScrollOffset + i) < totalMoves; ++i) {
+            int moveIdx = historyScrollOffset + i;
+            const auto& m = moveHistory[moveIdx];
+
+            std::ostringstream line;
+            line << std::setw(2) << (moveIdx + 1) << ".  "
+                 << cellName(m.srcRow, m.srcCol) << " -> "
+                 << cellName(m.dstRow, m.dstCol) << "  ["
+                 << directionToString(m.direction) << "]  = "
+                 << m.resultLetter << m.resultNumber;
+
+            _text->setString(line.str());
+            _text->setFillColor(sf::Color(20, 20, 40));
+            _text->setPosition(sf::Vector2f(histX + 14.0f,
+                                             histListY + 8.0f + i * lineHeight));
+            _window.draw(*_text);
+        }
+
+        if (totalMoves == 0) {
+            _text->setString("(No moves recorded)");
+            _text->setFillColor(sf::Color(140, 140, 160));
+            _text->setPosition(sf::Vector2f(histX + 14.0f, histListY + 12.0f));
+            _window.draw(*_text);
+        }
+
+        // 滚动条
+        if (maxScroll > 0) {
+            float trackX = histX + histW - 14.0f;
+            float trackH = histListH - 4.0f;
+            scrollTrack.setPosition(sf::Vector2f(trackX, histListY + 2.0f));
+            scrollTrack.setSize(sf::Vector2f(8.0f, trackH));
+            scrollTrack.setFillColor(sf::Color(200, 205, 215));
+            _window.draw(scrollTrack);
+
+            float thumbH = trackH * static_cast<float>(maxVisible) / totalMoves;
+            if (thumbH < 20.0f) thumbH = 20.0f;
+            float thumbY = histListY + 2.0f
+                + (trackH - thumbH) * historyScrollOffset / maxScroll;
+            scrollThumb.setPosition(sf::Vector2f(trackX, thumbY));
+            scrollThumb.setSize(sf::Vector2f(8.0f, thumbH));
+            scrollThumb.setFillColor(sf::Color(140, 150, 170));
+            _window.draw(scrollThumb);
+        }
+
+        // 底部提示
+        _text->setCharacterSize(14);
+        _text->setFillColor(sf::Color(140, 140, 160));
+        _text->setString("Press any key to return  |  Scroll to view history");
+        centerText(*_text, 0, wh - 50.0f, ww, 30);
+        _window.draw(*_text);
+
+        _window.display();
+    }
 }
 
 // ================================================================
@@ -734,33 +840,64 @@ void SFMLRenderer::showMessage(const std::string& msg)
 
 std::string SFMLRenderer::promptPlayerName()
 {
-    _window.clear(sf::Color(215, 228, 245));
-
     auto winSize = _window.getSize();
     float ww = static_cast<float>(winSize.x);
 
-    _text->setCharacterSize(24);
-    _text->setFillColor(sf::Color(30, 70, 170));
-    _text->setString("Enter Your Name");
-    centerText(*_text, 0, 200, ww, 40);
-    _window.draw(*_text);
-
-    _text->setCharacterSize(16);
-    _text->setFillColor(sf::Color(80, 80, 100));
-    _text->setString("Type your name and press Enter");
-    centerText(*_text, 0, 260, ww, 30);
-    _window.draw(*_text);
-
-    _window.display();
-
     std::string name;
+    bool inputFocused = true;
+    sf::Clock cursorClock;
+
+    const float boxW = 420.0f, boxH = 46.0f;
+    const float boxX = ww / 2.0f - boxW / 2.0f;
+    const float boxY = 305.0f;
+    const float boxRadius = 8.0f;
+
+    sf::RectangleShape cursorLine;
+
+    auto drawRoundedRect = [&](float x, float y, float w, float h, float r,
+                                const sf::Color& fill, const sf::Color& outline,
+                                float outlineThk) {
+        const int pts = 8;
+        sf::ConvexShape shape(4 * pts);
+        struct Corner { float cx, cy, startAngle; };
+        Corner corners[] = {
+            {x + r,     y + r,     3.14159f},
+            {x + w - r, y + r,     -3.14159f / 2.0f},
+            {x + w - r, y + h - r, 0.0f},
+            {x + r,     y + h - r, 3.14159f / 2.0f},
+        };
+        for (int c = 0; c < 4; ++c) {
+            for (int i = 0; i < pts; ++i) {
+                float angle = corners[c].startAngle
+                            + (3.14159f / 2.0f) * i / (pts - 1);
+                shape.setPoint(c * pts + i, {
+                    corners[c].cx + r * std::cos(angle),
+                    corners[c].cy + r * std::sin(angle)
+                });
+            }
+        }
+        shape.setFillColor(fill);
+        shape.setOutlineColor(outline);
+        shape.setOutlineThickness(outlineThk);
+        _window.draw(shape);
+    };
+
     while (_window.isOpen()) {
         while (const auto event = _window.pollEvent()) {
             if (event->is<sf::Event::Closed>()) {
                 _window.close();
                 return "Player";
             }
+
+            if (const auto* mouseEvt = event->getIf<sf::Event::MouseButtonPressed>()) {
+                float mx = static_cast<float>(mouseEvt->position.x);
+                float my = static_cast<float>(mouseEvt->position.y);
+                inputFocused = (mx >= boxX && mx <= boxX + boxW &&
+                                my >= boxY && my <= boxY + boxH);
+            }
+
             if (const auto* textEvt = event->getIf<sf::Event::TextEntered>()) {
+                if (!inputFocused) continue;
                 if (textEvt->unicode == '\r' || textEvt->unicode == '\n') {
                     if (name.empty()) name = "Player";
                     return name;
@@ -773,40 +910,57 @@ std::string SFMLRenderer::promptPlayerName()
                     }
                 }
             }
-
-            // 重绘
-            _window.clear(sf::Color(215, 228, 245));
-            _text->setCharacterSize(24);
-            _text->setFillColor(sf::Color(30, 70, 170));
-            _text->setString("Enter Your Name");
-            centerText(*_text, 0, 200, ww, 40);
-            _window.draw(*_text);
-
-            // 输入框背景
-            float boxW = 400.0f, boxH = 44.0f;
-            float boxX = ww / 2.0f - boxW / 2.0f;
-            float boxY = 305.0f;
-            _rect.setPosition(sf::Vector2f(boxX, boxY));
-            _rect.setSize(sf::Vector2f(boxW, boxH));
-            _rect.setFillColor(sf::Color::White);
-            _rect.setOutlineColor(sf::Color(40, 120, 220));
-            _rect.setOutlineThickness(2.0f);
-            _window.draw(_rect);
-
-            _text->setCharacterSize(22);
-            _text->setFillColor(sf::Color(20, 20, 40));
-            _text->setString(name + "_");
-            centerText(*_text, boxX, boxY, boxW, boxH);
-            _window.draw(*_text);
-
-            _text->setCharacterSize(14);
-            _text->setFillColor(sf::Color(140, 140, 160));
-            _text->setString("Press Enter to confirm");
-            centerText(*_text, 0, 380, ww, 30);
-            _window.draw(*_text);
-
-            _window.display();
         }
+
+        // ---- 每帧重绘 ----
+        _window.clear(sf::Color(215, 228, 245));
+
+        _text->setCharacterSize(24);
+        _text->setFillColor(sf::Color(30, 70, 170));
+        _text->setString("Enter Your Name");
+        centerText(*_text, 0, 200, ww, 40);
+        _window.draw(*_text);
+
+        _text->setCharacterSize(16);
+        _text->setFillColor(sf::Color(80, 80, 100));
+        _text->setString("Click the input box and type your name");
+        centerText(*_text, 0, 255, ww, 30);
+        _window.draw(*_text);
+
+        // 圆角输入框
+        sf::Color borderColor = inputFocused
+            ? sf::Color(40, 120, 220) : sf::Color(170, 180, 195);
+        float borderThk = inputFocused ? 2.5f : 1.5f;
+        drawRoundedRect(boxX, boxY, boxW, boxH, boxRadius,
+                        sf::Color::White, borderColor, borderThk);
+
+        // 输入文字（左对齐 + 内边距）
+        _text->setCharacterSize(22);
+        _text->setFillColor(sf::Color(20, 20, 40));
+        _text->setString(name);
+        _text->setPosition(sf::Vector2f(boxX + 14.0f, boxY + boxH / 2.0f - 14.0f));
+        _window.draw(*_text);
+
+        // 闪烁竖线光标
+        bool showCursor = inputFocused
+            && (cursorClock.getElapsedTime().asMilliseconds() % 800 < 400);
+        if (showCursor) {
+            float textW = _text->getLocalBounds().size.x;
+            float cursorX = boxX + 14.0f + textW + 2.0f;
+            float cursorY = boxY + 10.0f;
+            cursorLine.setPosition(sf::Vector2f(cursorX, cursorY));
+            cursorLine.setSize(sf::Vector2f(2.0f, boxH - 20.0f));
+            cursorLine.setFillColor(sf::Color(40, 120, 220));
+            _window.draw(cursorLine);
+        }
+
+        _text->setCharacterSize(14);
+        _text->setFillColor(sf::Color(140, 140, 160));
+        _text->setString("Press Enter to confirm");
+        centerText(*_text, 0, 390, ww, 30);
+        _window.draw(*_text);
+
+        _window.display();
     }
     return "Player";
 }
@@ -1078,7 +1232,6 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
                     int dr = row - _selectedRow;
                     int dc = col - _selectedCol;
                     if ((std::abs(dr) + std::abs(dc)) == 1) {
-                        _hasSelection = false;
                         return UserAction::SELECT_CELL;
                     }
                     if (dr == 0 && dc == 0) {
@@ -1228,6 +1381,11 @@ std::pair<int, int> SFMLRenderer::getSelectedCell() const
         return {_selectedRow, _selectedCol};
     }
     return {-1, -1};
+}
+
+void SFMLRenderer::clearSelection()
+{
+    _hasSelection = false;
 }
 
 void SFMLRenderer::clearScreen()

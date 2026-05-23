@@ -198,7 +198,8 @@ void ConsoleRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)
     std::cout << "\n  按任意键返回...";
 }
 
-void ConsoleRenderer::showResult(const ScoreRecord& record)
+void ConsoleRenderer::showResult(const ScoreRecord& record,
+                                  const std::vector<Move>& moveHistory)
 {
     clearScreen();
     setColor(14);
@@ -216,7 +217,26 @@ void ConsoleRenderer::showResult(const ScoreRecord& record)
               << (std::to_string(static_cast<int>(record.accuracy() * 100)) + "%") << "  ║\n";
     std::cout << "  ║  总  分: " << std::setw(28) << record.score()      << "║\n";
     std::cout << "  ╚══════════════════════════════════════╝\n";
+
+    // 操作历史
+    if (!moveHistory.empty()) {
+        std::cout << "\n  ╔══════════════════════════════════════╗\n";
+        std::cout << "  ║         操  作  历  史                ║\n";
+        std::cout << "  ╚══════════════════════════════════════╝\n";
+        for (size_t i = 0; i < moveHistory.size(); ++i) {
+            const auto& m = moveHistory[i];
+            char srcCol = static_cast<char>('A' + m.srcCol);
+            char dstCol = static_cast<char>('A' + m.dstCol);
+            std::cout << "  " << std::setw(2) << (i + 1) << ". "
+                      << srcCol << (m.srcRow + 1)
+                      << " -> " << dstCol << (m.dstRow + 1)
+                      << "  " << directionToString(m.direction)
+                      << "  -> " << m.resultLetter << m.resultNumber << "\n";
+        }
+    }
+
     std::cout << "\n  按任意键继续...";
+    _getch();
 }
 
 void ConsoleRenderer::showMessage(const std::string& msg)

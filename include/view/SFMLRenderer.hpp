@@ -42,7 +42,8 @@ public:
     void showMenu() override;
     void showPuzzleList(const std::vector<Puzzle>& puzzles) override;
     void showLeaderboard(const std::vector<ScoreRecord>& records) override;
-    void showResult(const ScoreRecord& record) override;
+    void showResult(const ScoreRecord& record,
+                    const std::vector<Move>& moveHistory) override;
     void showMessage(const std::string& msg) override;
     std::string promptPlayerName() override;
     std::vector<std::pair<int, int>> promptStartingCells(
@@ -53,6 +54,7 @@ public:
     void clearScreen() override;
     std::pair<int, int> getCursorPosition() const override;
     std::pair<int, int> getSelectedCell() const override;
+    void clearSelection() override;
 
     // ---- 动画触发（由 Controller 在合并后调用） ----
 

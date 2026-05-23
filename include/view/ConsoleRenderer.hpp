@@ -29,7 +29,8 @@ public:
     void showMenu() override;
     void showPuzzleList(const std::vector<Puzzle>& puzzles) override;
     void showLeaderboard(const std::vector<ScoreRecord>& records) override;
-    void showResult(const ScoreRecord& record) override;
+    void showResult(const ScoreRecord& record,
+                    const std::vector<Move>& moveHistory) override;
     void showMessage(const std::string& msg) override;
     std::string promptPlayerName() override;
     std::vector<std::pair<int, int>> promptStartingCells(

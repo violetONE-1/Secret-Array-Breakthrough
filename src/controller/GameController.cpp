@@ -258,7 +258,9 @@ void GameController::handleGameplay()
                 auto [selR, selC] = _renderer->getSelectedCell();
                 if (selR >= 0 && selC >= 0) {
                     // GUI 模式：源格 = 第一次选中, 目标格 = 第二次点击
-                    tryMerge(selR, selC, curR, curC);
+                    if (tryMerge(selR, selC, curR, curC)) {
+                        _renderer->clearSelection();
+                    }
                 }
 #else
                 // 控制台模式：光标所在格为源格（必须是有效棋子）
@@ -396,9 +398,8 @@ void GameController::submitAnswer()
                << ".txt";
     _replayBuffer->saveToFile(replayPath.str());
 
-    // 显示结果
-    _renderer->showResult(record);
-    _renderer->waitForAction();  // 等待用户按键
+    // 显示结果（showResult 内部处理等待按键）
+    _renderer->showResult(record, _state->moveHistory());
 
     _state.reset();
     _phase = GamePhase::MENU;
