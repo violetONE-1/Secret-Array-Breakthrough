@@ -96,6 +96,12 @@ public:
      */
     static bool deserialize(const std::string& data, Grid& outGrid);
 
+    /**
+     * 滑行操作：将源格内容移至相邻空格子。
+     * 调用方应确保源格非空且目标格为空。
+     */
+    void slideCell(int sr, int sc, int dr, int dc);
+
     /** 将全部格子重置为空状态 */
     void clear();
 

@@ -14,6 +14,7 @@ GameState::GameState(const Grid& initialGrid,
     , _puzzleId(puzzleId)
     , _playerStarts(playerStarts)
     , _stepsTaken(0)
+    , _slideCount(0)
     , _timerStarted(false)
     , _gameOver(false)
 {
@@ -48,6 +49,9 @@ void GameState::recordMove(const Move& move)
 
     _moveHistory.push_back(move);
     ++_stepsTaken;
+    if (move.moveType == MoveType::SLIDE) {
+        ++_slideCount;
+    }
 }
 
 const std::vector<Move>& GameState::moveHistory() const
@@ -73,9 +77,15 @@ double GameState::elapsedSeconds() const
 
 double GameState::accuracy() const
 {
-    // 准确率 = 1.0（无操作时）或 1.0（全有效操作时）
-    // 此处假设 recordMove 只在有效操作时调用
-    return _stepsTaken > 0 ? 1.0 : 0.0;
+    // 方案A：准确率只计合并操作，滑行不影响
+    int mergeCount = _stepsTaken - _slideCount;
+    if (mergeCount <= 0) return 0.0;
+    return 1.0;  // 所有合并均为有效操作
+}
+
+int GameState::slideCount() const
+{
+    return _slideCount;
 }
 
 // ---- 生命期 ----
@@ -120,7 +130,6 @@ bool GameState::isDeadEnd() const
     const int dirs[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
 
     for (const auto& [r, c] : _activeCells) {
-        // 防御：跳过越界或空格的活跃棋子（正常流程不应出现）
         if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
 
         const Cell& src = _grid.at(r, c);
@@ -133,10 +142,10 @@ bool GameState::isDeadEnd() const
             if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
 
             const Cell& dst = _grid.at(nr, nc);
-            if (!dst.isEmpty() && MergeRule::canMerge(src, dst)) {
-                return false;  // 至少有一个棋子还能走
-            }
+            // 可合并 或 可滑入空格 → 未死局
+            if (dst.isEmpty()) return false;
+            if (MergeRule::canMerge(src, dst)) return false;
         }
     }
-    return true;  // 全部 5 个棋子都被围死
+    return true;  // 全部棋子无路可走
 }

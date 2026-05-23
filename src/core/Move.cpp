@@ -39,7 +39,8 @@ Direction stringToDirection(const std::string& s)
 // ---- Move 构造 ----
 
 Move::Move()
-    : srcRow(0), srcCol(0)
+    : moveType(MoveType::MERGE)
+    , srcRow(0), srcCol(0)
     , dstRow(0), dstCol(0)
     , direction(Direction::NONE)
     , resultLetter('A')
@@ -47,9 +48,10 @@ Move::Move()
 {
 }
 
-Move::Move(int sr, int sc, int dr, int dc,
+Move::Move(MoveType type, int sr, int sc, int dr, int dc,
            Direction dir, char rl, int rn)
-    : srcRow(sr), srcCol(sc)
+    : moveType(type)
+    , srcRow(sr), srcCol(sc)
     , dstRow(dr), dstCol(dc)
     , direction(dir)
     , resultLetter(rl)
@@ -61,10 +63,9 @@ Move::Move(int sr, int sc, int dr, int dc,
 
 std::string Move::serialize(int seqNum) const
 {
-    // 格式："[Move] 序号 源行,源列 -> 目标行,目标列 方向 合并后字母数字"
-    // 例：  "[Move] 001 3,4 -> 3,5 RIGHT A5"
+    const char* tag = (moveType == MoveType::SLIDE) ? "[Slide]" : "[Move]";
     std::ostringstream oss;
-    oss << "[Move] "
+    oss << tag << ' '
         << std::setw(3) << std::setfill('0') << seqNum << ' '
         << srcRow << ',' << srcCol << " -> "
         << dstRow << ',' << dstCol << ' '
@@ -75,10 +76,18 @@ std::string Move::serialize(int seqNum) const
 
 bool Move::deserialize(const std::string& line, Move& outMove, int& outSeqNum)
 {
-    // 期望格式："[Move] 001 3,4 -> 3,5 RIGHT A5"
+    // 期望格式："[Move] 001 3,4 -> 3,5 RIGHT A5"  或  "[Slide] ..."
     std::istringstream iss(line);
     std::string tag;
-    if (!(iss >> tag) || tag != "[Move]") return false;
+    if (!(iss >> tag)) return false;
+
+    if (tag == "[Move]" || tag == "[Merge]") {
+        outMove.moveType = MoveType::MERGE;
+    } else if (tag == "[Slide]") {
+        outMove.moveType = MoveType::SLIDE;
+    } else {
+        return false;
+    }
 
     // 序号
     if (!(iss >> outSeqNum)) return false;

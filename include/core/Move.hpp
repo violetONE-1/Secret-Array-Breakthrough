@@ -26,6 +26,12 @@ enum class Direction {
     NONE    // 无方向（初始值）
 };
 
+/** 操作类型 */
+enum class MoveType {
+    MERGE,  // 合并操作
+    SLIDE   // 滑行操作（移入空格）
+};
+
 /**
  * 将 Direction 枚举转为字符串表示：
  *   UP→"UP", DOWN→"DOWN", LEFT→"LEFT", RIGHT→"RIGHT"
@@ -47,17 +53,18 @@ Direction stringToDirection(const std::string& s);
  *   - _resultLetter / _resultNumber：合并后中心格的内容
  */
 struct Move {
-    int       srcRow, srcCol;
-    int       dstRow, dstCol;
+    MoveType moveType;
+    int      srcRow, srcCol;
+    int      dstRow, dstCol;
     Direction direction;
-    char      resultLetter;
-    int       resultNumber;
+    char     resultLetter;
+    int      resultNumber;
 
-    /** 构造全零 Move（NONE 方向，空格结果） */
+    /** 构造全零 Move（NONE 方向，空格结果，类型 MERGE） */
     Move();
 
     /** 构造完整 Move */
-    Move(int sr, int sc, int dr, int dc,
+    Move(MoveType type, int sr, int sc, int dr, int dc,
          Direction dir, char rl, int rn);
 
     // ---- 序列化 ----

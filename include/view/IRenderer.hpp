@@ -42,6 +42,9 @@ enum class UserAction {
     RESIZE_BOARD,
     TOGGLE_REPLAY,
     NEXT_FRAME,        // 回放中跳到下一步
+    AI_EXECUTE,        // AI 代走一步
+    VS_AI_NORMAL,      // VS AI 普通模式
+    VS_AI_ADVANCED,    // VS AI 高级模式
 };
 
 class IRenderer {
@@ -65,6 +68,14 @@ public:
     /** 显示单次答题结果，含操作历史 */
     virtual void showResult(const ScoreRecord& record,
                             const std::vector<Move>& moveHistory) = 0;
+
+    /** 显示 VS AI 难度选择界面 */
+    virtual void showVSAIMenu() = 0;
+
+    /** 显示 VS AI 对战结果（玩家 vs AI 成绩对比） */
+    virtual void showVSResult(const ScoreRecord& playerRecord,
+                              const ScoreRecord& aiRecord,
+                              const std::string& winner) = 0;
 
     /** 显示临时消息并等待用户按键 */
     virtual void showMessage(const std::string& msg) = 0;

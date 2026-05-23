@@ -92,8 +92,11 @@ public:
     /** 标记游戏结束 */
     void endGame();
 
-    /** 返回本局步数 */
+    /** 返回本局总步数（合并 + 滑行） */
     int stepsTaken() const;
+
+    /** 返回滑行步数 */
+    int slideCount() const;
 
 private:
     Grid                                _grid;
@@ -101,6 +104,7 @@ private:
     std::vector<std::pair<int, int>>    _playerStarts;
     std::set<std::pair<int, int>>       _activeCells;
     int                                 _stepsTaken;
+    int                                 _slideCount;
     std::vector<Move>                   _moveHistory;
     std::chrono::steady_clock::time_point _startTime;
     bool                                _timerStarted;

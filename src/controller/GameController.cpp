@@ -14,6 +14,8 @@
 #include <iomanip>
 #include <ctime>
 #include <sstream>
+#include <thread>
+#include <chrono>
 
 // ---- 构造 / 析构 ----
 
@@ -24,6 +26,9 @@ GameController::GameController()
     , _cursorCol(0)
     , _gridRows(25)
     , _gridCols(25)
+    , _vsAI(false)
+    , _aiDelayMs(300)
+    , _aiStrategy(AIStrategy::RANDOM)
 {
     // 初始化数据层（按依赖顺序）
     _fileManager = std::make_unique<FileManager>("data");
@@ -82,6 +87,18 @@ void GameController::run()
                 handleLeaderboard();
                 break;
 
+            case GamePhase::VS_AI_MENU:
+                handleVSAIMenu();
+                break;
+
+            case GamePhase::VS_AI_WATCH:
+                handleVSAIWatch();
+                break;
+
+            case GamePhase::VS_AI_RESULT:
+                handleVSResult();
+                break;
+
             case GamePhase::QUIT:
                 _running = false;
                 break;
@@ -106,15 +123,23 @@ void GameController::handleMenu()
     switch (action) {
         case UserAction::SELECT_PUZZLE_1:
         case UserAction::CONFIRM:
+            _vsAI = false;
             _phase = GamePhase::PUZZLE_SELECT;
             break;
 
+        case UserAction::SELECT_PUZZLE_2:
         case UserAction::VIEW_LEADERBOARD:
             _phase = GamePhase::LEADERBOARD;
             break;
 
-        case UserAction::QUIT:
         case UserAction::SELECT_PUZZLE_3:
+        case UserAction::VS_AI_NORMAL:
+            _vsAI = true;
+            _phase = GamePhase::VS_AI_MENU;
+            break;
+
+        case UserAction::SELECT_PUZZLE_4:
+        case UserAction::QUIT:
             _phase = GamePhase::QUIT;
             break;
 
@@ -202,6 +227,11 @@ void GameController::startNewGame(const Puzzle& puzzle)
                                   _player.name(),
                                   startsStr.str());
 
+    // VS AI 模式：保存初始盘面快照，供 AI 回合使用
+    if (_vsAI) {
+        _initialGridSnapshot = initialGrid;
+    }
+
     _phase = GamePhase::GAMEPLAY;
 }
 
@@ -256,27 +286,45 @@ void GameController::handleGameplay()
             break;
 
         case UserAction::SELECT_CELL:
-            // 两段式合并：渲染器已确定源格（玩家棋子）和目标格
+            // 两段式操作：渲染器已确定源格和目标格
             {
 #ifdef HAS_GUI
                 auto [curR, curC] = _renderer->getCursorPosition();
                 auto [selR, selC] = _renderer->getSelectedCell();
                 if (selR >= 0 && selC >= 0) {
-                    // GUI 模式：源格 = 第一次选中, 目标格 = 第二次点击
-                    if (tryMerge(selR, selC, curR, curC)) {
-                        _renderer->clearSelection();
+                    // GUI：目标格空则滑行，否则尝试合并
+                    if (_state->grid().at(curR, curC).isEmpty()) {
+                        if (trySlide(selR, selC, curR, curC)) {
+                            _renderer->clearSelection();
+                        }
+                    } else {
+                        if (tryMerge(selR, selC, curR, curC)) {
+                            _renderer->clearSelection();
+                        }
                     }
                 }
 #else
-                // 控制台模式：光标所在格为源格（必须是有效棋子）
+                // 控制台：光标所在格为源格，优先合并，其次滑行
                 if (_state->isActiveCell(_cursorRow, _cursorCol)) {
                     Grid& gr = _state->grid();
                     int check[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
+                    bool acted = false;
                     for (int d = 0; d < 4; ++d) {
                         int nr = _cursorRow + check[d][0];
                         int nc = _cursorCol + check[d][1];
                         if (nr >= 0 && nr < _gridRows && nc >= 0 && nc < _gridCols) {
-                            if (tryMerge(_cursorRow, _cursorCol, nr, nc)) break;
+                            if (tryMerge(_cursorRow, _cursorCol, nr, nc)) {
+                                acted = true; break;
+                            }
+                        }
+                    }
+                    if (!acted) {
+                        for (int d = 0; d < 4; ++d) {
+                            int nr = _cursorRow + check[d][0];
+                            int nc = _cursorCol + check[d][1];
+                            if (nr >= 0 && nr < _gridRows && nc >= 0 && nc < _gridCols) {
+                                if (trySlide(_cursorRow, _cursorCol, nr, nc)) break;
+                            }
                         }
                     }
                 }
@@ -285,7 +333,7 @@ void GameController::handleGameplay()
             break;
 
         case UserAction::CONFIRM:
-            // Enter 键：光标所在格为源格（必须是有效棋子），向第一个合法邻居合并
+            // Enter 键：光标所在格为源格，优先合并，其次滑行
             {
 #ifdef HAS_GUI
                 auto [curR, curC] = _renderer->getCursorPosition();
@@ -296,13 +344,35 @@ void GameController::handleGameplay()
                 if (_state->isActiveCell(curR, curC)) {
                     Grid& gr = _state->grid();
                     int check[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
+                    bool acted = false;
                     for (int d = 0; d < 4; ++d) {
                         int nr = curR + check[d][0];
                         int nc = curC + check[d][1];
                         if (nr >= 0 && nr < _gridRows && nc >= 0 && nc < _gridCols) {
-                            if (tryMerge(curR, curC, nr, nc)) break;
+                            if (tryMerge(curR, curC, nr, nc)) {
+                                acted = true; break;
+                            }
                         }
                     }
+                    if (!acted) {
+                        for (int d = 0; d < 4; ++d) {
+                            int nr = curR + check[d][0];
+                            int nc = curC + check[d][1];
+                            if (nr >= 0 && nr < _gridRows && nc >= 0 && nc < _gridCols) {
+                                if (trySlide(curR, curC, nr, nc)) break;
+                            }
+                        }
+                    }
+                }
+            }
+            break;
+
+        case UserAction::AI_EXECUTE:
+            {
+                auto aiMove = _aiPlayer.findBestMove(*_state);
+                if (aiMove.has_value()) {
+                    tryMerge(aiMove->srcRow, aiMove->srcCol,
+                             aiMove->dstRow, aiMove->dstCol);
                 }
             }
             break;
@@ -354,12 +424,50 @@ bool GameController::tryMerge(int srcRow, int srcCol, int dstRow, int dstCol)
     grid.mergeCells(srcRow, srcCol, dstRow, dstCol, result);
 
     // 记录操作
-    Move move(srcRow, srcCol, dstRow, dstCol, dir,
+    Move move(MoveType::MERGE, srcRow, srcCol, dstRow, dstCol, dir,
               result.getLetter(), result.getNumber());
     _state->recordMove(move);
     _replayBuffer->record(move);
 
     // 更新有效棋子：移除源位置，加入目标位置
+    _state->updateActiveCells(srcRow, srcCol, dstRow, dstCol);
+
+    _cursorRow = dstRow;
+    _cursorCol = dstCol;
+
+    return true;
+}
+
+bool GameController::trySlide(int srcRow, int srcCol, int dstRow, int dstCol)
+{
+    if (!_state) return false;
+
+    if (!_state->isActiveCell(srcRow, srcCol)) return false;
+
+    Grid& grid = _state->grid();
+    const Cell& source = grid.at(srcRow, srcCol);
+    const Cell& target = grid.at(dstRow, dstCol);
+
+    // 目标格必须为空
+    if (!target.isEmpty()) return false;
+
+    // 确定方向
+    Direction dir;
+    if (dstRow < srcRow)      dir = Direction::UP;
+    else if (dstRow > srcRow) dir = Direction::DOWN;
+    else if (dstCol < srcCol) dir = Direction::LEFT;
+    else                      dir = Direction::RIGHT;
+
+    // 执行滑行
+    grid.slideCell(srcRow, srcCol, dstRow, dstCol);
+
+    // 记录操作（result 为棋子原有内容，不变）
+    Move move(MoveType::SLIDE, srcRow, srcCol, dstRow, dstCol, dir,
+              source.getLetter(), source.getNumber());
+    _state->recordMove(move);
+    _replayBuffer->record(move);
+
+    // 更新有效棋子位置
     _state->updateActiveCells(srcRow, srcCol, dstRow, dstCol);
 
     _cursorRow = dstRow;
@@ -376,10 +484,8 @@ void GameController::submitAnswer()
 {
     if (!_state) return;
 
-    // 停止录制回放
     _replayBuffer->stopRecording();
 
-    // 生成得分记录
     auto now = std::time(nullptr);
     std::ostringstream timestamp;
     timestamp << std::put_time(std::localtime(&now), "%Y-%m-%d %H:%M:%S");
@@ -393,21 +499,34 @@ void GameController::submitAnswer()
         timestamp.str()
     );
 
-    // 更新排行榜
-    _leaderboard->add(record);
+    if (_vsAI) {
+        // VS AI 模式：保存玩家成绩，不显示个人结果，进入 AI 回合
+        _playerScoreRecord = record;
+        _playerMoveHistory = _state->moveHistory();
 
-    // 保存回放文件
-    std::ostringstream replayPath;
-    replayPath << "replays/replay_"
-               << std::put_time(std::localtime(&now), "%Y%m%d_%H%M%S")
-               << ".txt";
-    _replayBuffer->saveToFile(replayPath.str());
+        std::ostringstream replayPath;
+        replayPath << "replays/replay_"
+                   << std::put_time(std::localtime(&now), "%Y%m%d_%H%M%S")
+                   << ".txt";
+        _replayBuffer->saveToFile(replayPath.str());
 
-    // 显示结果（showResult 内部处理等待按键）
-    _renderer->showResult(record, _state->moveHistory());
+        _state.reset();
+        _phase = GamePhase::VS_AI_WATCH;
+    } else {
+        // 单人模式：原有逻辑
+        _leaderboard->add(record);
 
-    _state.reset();
-    _phase = GamePhase::MENU;
+        std::ostringstream replayPath;
+        replayPath << "replays/replay_"
+                   << std::put_time(std::localtime(&now), "%Y%m%d_%H%M%S")
+                   << ".txt";
+        _replayBuffer->saveToFile(replayPath.str());
+
+        _renderer->showResult(record, _state->moveHistory());
+
+        _state.reset();
+        _phase = GamePhase::MENU;
+    }
 }
 
 // ================================================================
@@ -426,10 +545,179 @@ void GameController::handleResult()
 
 void GameController::handleLeaderboard()
 {
-    auto records = _leaderboard->topByScore(15);  // 取前 15 名
+    auto records = _leaderboard->topByScore(15);
 
     _renderer->showLeaderboard(records);
-    _renderer->waitForAction();  // 等待用户按键
+    _renderer->waitForAction();
 
+    _phase = GamePhase::MENU;
+}
+
+// ================================================================
+//  VS AI 难度选择阶段
+// ================================================================
+
+void GameController::handleVSAIMenu()
+{
+    _renderer->showVSAIMenu();
+
+    UserAction action = _renderer->waitForAction();
+
+    switch (action) {
+        case UserAction::SELECT_PUZZLE_1:
+            // 普通模式
+            _aiStrategy = AIStrategy::RANDOM;
+            _aiDelayMs = 300;
+            _aiPlayer.setStrategy(_aiStrategy);
+            _phase = GamePhase::PUZZLE_SELECT;
+            break;
+
+        case UserAction::SELECT_PUZZLE_2:
+            // 高级模式
+            _aiStrategy = AIStrategy::GREEDY;
+            _aiDelayMs = 500;
+            _aiPlayer.setStrategy(_aiStrategy);
+            _phase = GamePhase::PUZZLE_SELECT;
+            break;
+
+        case UserAction::SELECT_PUZZLE_3:
+        case UserAction::BACK:
+        case UserAction::QUIT:
+            _vsAI = false;
+            _phase = GamePhase::MENU;
+            break;
+
+        default:
+            break;
+    }
+}
+
+// ================================================================
+//  VS AI 观战阶段：AI 自动走棋
+// ================================================================
+
+void GameController::handleVSAIWatch()
+{
+    // AI 从初始盘面自选 5 个起始格
+    auto aiStarts = _aiPlayer.pickStartingCells(_initialGridSnapshot, 5);
+
+    // 为 AI 创建新的 GameState（重置计时，从零开始）
+    auto aiState = std::make_unique<GameState>(
+        _initialGridSnapshot, aiStarts,
+        _playerScoreRecord.puzzleId() + " (AI)");
+
+    // AI 的渲染上下文
+    _gridRows = _initialGridSnapshot.rows();
+    _gridCols = _initialGridSnapshot.cols();
+    _cursorRow = _gridRows / 2;
+    _cursorCol = _gridCols / 2;
+
+    // AI 使用美化名称
+    std::string aiName = "AI(" + AIPlayer::strategyName(_aiStrategy) + ")";
+
+    // 显示提示
+    _renderer->showMessage("AI is thinking... (" +
+                          AIPlayer::strategyName(_aiStrategy) + " mode, " +
+                          std::to_string(_aiDelayMs) + "ms/step)");
+
+    // AI 循环走棋
+    bool aiRunning = true;
+    while (aiRunning && _renderer->isOpen()) {
+        // 渲染 AI 当前状态
+        _renderer->render(*aiState);
+
+        // 检查死局
+        if (!aiState->grid().hasAnyValidMove() || aiState->isDeadEnd()) {
+            aiRunning = false;
+            break;
+        }
+
+        // AI 查找最佳操作
+        auto aiMove = _aiPlayer.findBestMove(*aiState);
+        if (!aiMove.has_value()) {
+            aiRunning = false;
+            break;
+        }
+
+        // 执行操作
+        Grid& aiGrid = aiState->grid();
+        if (aiMove->move.moveType == MoveType::MERGE) {
+            Cell result(aiMove->move.resultLetter, aiMove->move.resultNumber);
+            aiGrid.mergeCells(aiMove->srcRow, aiMove->srcCol,
+                              aiMove->dstRow, aiMove->dstCol, result);
+        } else {
+            aiGrid.slideCell(aiMove->srcRow, aiMove->srcCol,
+                             aiMove->dstRow, aiMove->dstCol);
+        }
+
+        aiState->recordMove(aiMove->move);
+        aiState->updateActiveCells(aiMove->srcRow, aiMove->srcCol,
+                                   aiMove->dstRow, aiMove->dstCol);
+
+        _cursorRow = aiMove->dstRow;
+        _cursorCol = aiMove->dstCol;
+
+        // 延迟并处理窗口事件
+        auto delayStart = std::chrono::steady_clock::now();
+        while (std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::steady_clock::now() - delayStart).count() < _aiDelayMs) {
+            #ifdef HAS_GUI
+            // SFML 模式：处理窗口事件防止卡死
+            if (_renderer->isOpen()) {
+                // 重新渲染以保持画面
+                _renderer->render(*aiState);
+            }
+            #endif
+            std::this_thread::sleep_for(std::chrono::milliseconds(16));  // ~60fps
+        }
+    }
+
+    // 生成 AI 成绩（不计时，time=0）
+    auto now = std::time(nullptr);
+    std::ostringstream ts;
+    ts << std::put_time(std::localtime(&now), "%Y-%m-%d %H:%M:%S");
+
+    ScoreRecord aiRecord(
+        aiName,
+        _playerScoreRecord.puzzleId(),
+        0.0,  // AI 不计时
+        aiState->stepsTaken(),
+        aiState->accuracy(),
+        ts.str()
+    );
+
+    // 判定胜负
+    std::string winner;
+    if (_playerScoreRecord.score() > aiRecord.score()) {
+        winner = "player";
+    } else if (_playerScoreRecord.score() < aiRecord.score()) {
+        winner = "ai";
+    } else {
+        // 平局比步数少者胜
+        if (_playerScoreRecord.steps() < aiRecord.steps()) {
+            winner = "player";
+        } else if (_playerScoreRecord.steps() > aiRecord.steps()) {
+            winner = "ai";
+        } else {
+            winner = "draw";
+        }
+    }
+
+    // 进入结果展示
+    _renderer->showVSResult(_playerScoreRecord, aiRecord, winner);
+
+    // 等待按键后返回菜单
+    _renderer->waitForAction();
+
+    _phase = GamePhase::MENU;
+    _vsAI = false;
+}
+
+// ================================================================
+//  VS AI 结果阶段
+// ================================================================
+
+void GameController::handleVSResult()
+{
     _phase = GamePhase::MENU;
 }

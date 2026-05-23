@@ -124,25 +124,26 @@ void ConsoleRenderer::render(const GameState& state)
 
     // 操作提示
     setColor(8);  // 灰色
-    std::cout << "\n  [操作] 方向键:移动光标 | 空格:选中/取消 | 回车:向选中格合并检查\n";
-    std::cout << "          S:提交答案 | Q:返回菜单\n";
+    std::cout << "\n  [操作] 方向键:移动光标 | 空格/回车:合并或滑入空格\n";
+    std::cout << "          S:提交答案 | Q:返回菜单 | E:AI代走一步\n";
     setColor(7);
 }
 
 void ConsoleRenderer::showMenu()
 {
     clearScreen();
-    setColor(14);  // 亮黄
+    setColor(14);
     std::cout << "\n";
     std::cout << "  ╔══════════════════════════════════════╗\n";
     std::cout << "  ║       Matrix Breakthrough             ║\n";
     std::cout << "  ╠══════════════════════════════════════╣\n";
     std::cout << "  ║  1. 开始游戏 (选题)                    ║\n";
     std::cout << "  ║  2. 查看排行榜                         ║\n";
-    std::cout << "  ║  3. 退出                               ║\n";
+    std::cout << "  ║  3. VS AI 对战                        ║\n";
+    std::cout << "  ║  4. 退出                               ║\n";
     std::cout << "  ╚══════════════════════════════════════╝\n";
     setColor(7);
-    std::cout << "\n  请输入选项 (1-3): ";
+    std::cout << "\n  请输入选项 (1-4): ";
 }
 
 void ConsoleRenderer::showPuzzleList(const std::vector<Puzzle>& puzzles)
@@ -236,6 +237,85 @@ void ConsoleRenderer::showResult(const ScoreRecord& record,
     }
 
     std::cout << "\n  按任意键继续...";
+    _getch();
+}
+
+void ConsoleRenderer::showVSAIMenu()
+{
+    clearScreen();
+    setColor(14);
+    std::cout << "\n";
+    std::cout << "  ╔══════════════════════════════════════╗\n";
+    std::cout << "  ║        VS  AI  对  战                ║\n";
+    std::cout << "  ╠══════════════════════════════════════╣\n";
+    std::cout << "  ║  1. 普通模式 (AI 随机策略)             ║\n";
+    std::cout << "  ║  2. 高级模式 (AI 贪心策略)             ║\n";
+    std::cout << "  ║  3. 返回主菜单                         ║\n";
+    std::cout << "  ╚══════════════════════════════════════╝\n";
+    setColor(7);
+    std::cout << "\n  请选择难度 (1-3): ";
+}
+
+void ConsoleRenderer::showVSResult(const ScoreRecord& playerRecord,
+                                    const ScoreRecord& aiRecord,
+                                    const std::string& winner)
+{
+    clearScreen();
+    setColor(14);
+    std::cout << "\n";
+    std::cout << "  ╔════════════════════════════════════════════════════╗\n";
+    std::cout << "  ║              VS  AI  对  战  结  果                ║\n";
+    std::cout << "  ╠════════════════════════════════════════════════════╣\n";
+
+    auto printLine = [](const std::string& label,
+                         const std::string& pVal,
+                         const std::string& aVal) {
+        std::cout << "  ║  " << std::setw(14) << std::left << label
+                  << std::setw(16) << pVal
+                  << std::setw(16) << aVal << "║\n";
+    };
+
+    setColor(11);
+    std::cout << "  ║  " << std::setw(14) << ""
+              << std::setw(16) << "--- 玩家 ---"
+              << std::setw(16) << "--- AI ---" << "  ║\n";
+    setColor(7);
+
+    printLine("玩家名:", playerRecord.playerName(), aiRecord.playerName());
+    printLine("用时(秒):",
+              std::to_string(static_cast<int>(playerRecord.timeSeconds())),
+              std::to_string(static_cast<int>(aiRecord.timeSeconds())));
+    printLine("步数:",
+              std::to_string(playerRecord.steps()),
+              std::to_string(aiRecord.steps()));
+    {
+        std::ostringstream pa, aa;
+        pa << std::fixed << std::setprecision(0)
+           << (playerRecord.accuracy() * 100) << "%";
+        aa << std::fixed << std::setprecision(0)
+           << (aiRecord.accuracy() * 100) << "%";
+        printLine("正确率:", pa.str(), aa.str());
+    }
+    setColor(14);
+    printLine("总分:",
+              std::to_string(playerRecord.score()),
+              std::to_string(aiRecord.score()));
+    setColor(7);
+
+    std::cout << "  ╠════════════════════════════════════════════════════╣\n";
+    if (winner == "player") {
+        setColor(10);
+        std::cout << "  ║              >>>  你赢了!  <<<                       ║\n";
+    } else if (winner == "ai") {
+        setColor(12);
+        std::cout << "  ║              >>>  AI 获胜!  <<<                       ║\n";
+    } else {
+        setColor(14);
+        std::cout << "  ║              >>>  平  局!  <<<                        ║\n";
+    }
+    setColor(7);
+    std::cout << "  ╚════════════════════════════════════════════════════╝\n";
+    std::cout << "\n  按任意键返回主菜单...";
     _getch();
 }
 
@@ -356,6 +436,7 @@ UserAction ConsoleRenderer::parseKey(int ch)
         case '4': return UserAction::SELECT_PUZZLE_4;
         case '5': return UserAction::SELECT_PUZZLE_5;
         case 'l': case 'L': return UserAction::VIEW_LEADERBOARD;
+        case 'e': case 'E': return UserAction::AI_EXECUTE;
         default:  return UserAction::NONE;
     }
 }

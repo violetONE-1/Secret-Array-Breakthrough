@@ -29,7 +29,7 @@
 
 /** SFMLRenderer 内部界面标识 */
 enum class UIScreen { Menu, PuzzleList, Leaderboard, Result, Message,
-                      Gameplay, NamePrompt, StartSelect };
+                      Gameplay, NamePrompt, StartSelect, VSAIMenu, VSResult };
 
 class SFMLRenderer : public IRenderer {
 public:
@@ -45,6 +45,10 @@ public:
     void showResult(const ScoreRecord& record,
                     const std::vector<Move>& moveHistory) override;
     void showMessage(const std::string& msg) override;
+    void showVSAIMenu() override;
+    void showVSResult(const ScoreRecord& playerRecord,
+                      const ScoreRecord& aiRecord,
+                      const std::string& winner) override;
     std::string promptPlayerName() override;
     std::vector<std::pair<int, int>> promptStartingCells(
         const Grid& grid, int count) override;
@@ -100,6 +104,8 @@ private:
 
     sf::Color getCellColor(const Cell& cell) const;
     std::vector<std::pair<int, int>> getValidNeighbors(const Grid& grid,
+                                                        int row, int col) const;
+    std::vector<std::pair<int, int>> getEmptyNeighbors(const Grid& grid,
                                                         int row, int col) const;
     void centerText(sf::Text& text, float x, float y, float w, float h);
 

@@ -33,6 +33,7 @@
 #include "model/ScoreRecord.hpp"
 #include "view/IRenderer.hpp"
 #include "controller/InputHandler.hpp"
+#include "controller/AIPlayer.hpp"
 #include <memory>
 #include <string>
 #include <vector>
@@ -45,7 +46,10 @@ enum class GamePhase {
     RESULT,
     LEADERBOARD,
     REPLAY,
-    QUIT
+    QUIT,
+    VS_AI_MENU,
+    VS_AI_WATCH,
+    VS_AI_RESULT
 };
 
 class GameController {
@@ -84,12 +88,18 @@ private:
     void handleGameplay();
     void handleResult();
     void handleLeaderboard();
+    void handleVSAIMenu();
+    void handleVSAIWatch();
+    void handleVSResult();
 
     /** 开始新游戏：初始化 GameState + ReplayBuffer */
     void startNewGame(const Puzzle& puzzle);
 
     /** 执行一步合并操作 */
     bool tryMerge(int srcRow, int srcCol, int dstRow, int dstCol);
+
+    /** 执行一步滑行操作（移入空格） */
+    bool trySlide(int srcRow, int srcCol, int dstRow, int dstCol);
 
     /** 提交答题结果 */
     void submitAnswer();
@@ -103,6 +113,7 @@ private:
     std::unique_ptr<IRenderer>      _renderer;
     std::unique_ptr<InputHandler>   _inputHandler;
     std::unique_ptr<GameState>      _state;
+    AIPlayer                        _aiPlayer;
 
     // ---- 值语义 ----
 
@@ -116,6 +127,15 @@ private:
     int _cursorCol;
     int _gridRows;
     int _gridCols;
+
+    // ---- VS AI 状态 ----
+
+    bool        _vsAI;
+    int         _aiDelayMs;
+    AIStrategy  _aiStrategy;
+    Grid        _initialGridSnapshot;
+    ScoreRecord _playerScoreRecord;
+    std::vector<Move> _playerMoveHistory;
 };
 
 #endif // GAMECONTROLLER_HPP

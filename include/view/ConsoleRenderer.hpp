@@ -32,6 +32,10 @@ public:
     void showResult(const ScoreRecord& record,
                     const std::vector<Move>& moveHistory) override;
     void showMessage(const std::string& msg) override;
+    void showVSAIMenu() override;
+    void showVSResult(const ScoreRecord& playerRecord,
+                      const ScoreRecord& aiRecord,
+                      const std::string& winner) override;
     std::string promptPlayerName() override;
     std::vector<std::pair<int, int>> promptStartingCells(
         const Grid& grid, int count) override;

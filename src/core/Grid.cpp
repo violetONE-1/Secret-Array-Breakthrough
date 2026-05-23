@@ -113,7 +113,7 @@ std::vector<Move> Grid::findAllValidMoves() const
                         case Direction::RIGHT: revDir = Direction::LEFT;  break;
                         default:               revDir = Direction::NONE;  break;
                     }
-                    moves.emplace_back(nr, nc, r, c, revDir,
+                    moves.emplace_back(MoveType::MERGE, nr, nc, r, c, revDir,
                                        result.getLetter(), result.getNumber());
                 }
             }
@@ -199,6 +199,12 @@ bool Grid::deserialize(const std::string& data, Grid& outGrid)
 
     outGrid = std::move(temp);
     return true;
+}
+
+void Grid::slideCell(int sr, int sc, int dr, int dc)
+{
+    _cells[dr][dc] = _cells[sr][sc];
+    _cells[sr][sc] = Cell::makeEmpty();
 }
 
 void Grid::clear()
