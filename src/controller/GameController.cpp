@@ -223,9 +223,14 @@ void GameController::handleGameplay()
     _state->grid().at(_cursorRow, _cursorCol).setSelected(false);
 #endif
 
-    // 检查是否有合法操作
+    // 检查是否有合法操作（全盘无解）
     if (!_state->grid().hasAnyValidMove() && _state->stepsTaken() > 0) {
-        // 死局，自动提交
+        submitAnswer();
+        return;
+    }
+
+    // 检查活跃棋子是否全部陷入死局（盘面可能有解但 5 个棋子都走不了）
+    if (_state->isDeadEnd() && _state->stepsTaken() > 0) {
         submitAnswer();
         return;
     }

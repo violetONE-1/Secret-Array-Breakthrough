@@ -86,6 +86,9 @@ public:
     /** 是否有任何合法操作存在 */
     bool isOver() const;
 
+    /** 检测死局：5个活跃棋子是否全部无合法邻居可合并 */
+    bool isDeadEnd() const;
+
     /** 标记游戏结束 */
     void endGame();
 

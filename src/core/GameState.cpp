@@ -5,6 +5,7 @@
  */
 
 #include "core/GameState.hpp"
+#include "core/MergeRule.hpp"
 
 GameState::GameState(const Grid& initialGrid,
                      const std::vector<std::pair<int, int>>& playerStarts,
@@ -110,4 +111,32 @@ void GameState::updateActiveCells(int fromRow, int fromCol, int toRow, int toCol
 {
     _activeCells.erase({fromRow, fromCol});
     _activeCells.insert({toRow, toCol});
+}
+
+bool GameState::isDeadEnd() const
+{
+    const int rows = _grid.rows();
+    const int cols = _grid.cols();
+    const int dirs[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+
+    for (const auto& [r, c] : _activeCells) {
+        // 防御：跳过越界或空格的活跃棋子（正常流程不应出现）
+        if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
+
+        const Cell& src = _grid.at(r, c);
+        if (src.isEmpty()) continue;
+
+        for (int d = 0; d < 4; ++d) {
+            int nr = r + dirs[d][0];
+            int nc = c + dirs[d][1];
+
+            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+
+            const Cell& dst = _grid.at(nr, nc);
+            if (!dst.isEmpty() && MergeRule::canMerge(src, dst)) {
+                return false;  // 至少有一个棋子还能走
+            }
+        }
+    }
+    return true;  // 全部 5 个棋子都被围死
 }
