@@ -251,35 +251,34 @@ void GameController::handleGameplay()
             break;
 
         case UserAction::SELECT_CELL:
-            // 空格/鼠标点击：检查光标格与周围邻格是否可以合并
+            // 两段式合并：渲染器已确定源格（玩家棋子）和目标格
             {
 #ifdef HAS_GUI
                 auto [curR, curC] = _renderer->getCursorPosition();
+                auto [selR, selC] = _renderer->getSelectedCell();
+                if (selR >= 0 && selC >= 0) {
+                    // GUI 模式：源格 = 第一次选中, 目标格 = 第二次点击
+                    tryMerge(selR, selC, curR, curC);
+                }
 #else
-                int curR = _cursorRow;
-                int curC = _cursorCol;
-#endif
-                Grid& grid = _state->grid();
-                Cell& center = grid.at(curR, curC);
-                if (center.isEmpty()) break;  // 不能合并空格
-
-                // 尝试四个方向找到第一个可合并的邻格并执行合并
-                bool merged = false;
-                int check[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
-                for (int d = 0; d < 4 && !merged; ++d) {
-                    int nr = curR + check[d][0];
-                    int nc = curC + check[d][1];
-                    if (nr >= 0 && nr < _gridRows && nc >= 0 && nc < _gridCols) {
-                        if (tryMerge(nr, nc, curR, curC)) {
-                            merged = true;
+                // 控制台模式：光标所在格为源格（必须是有效棋子）
+                if (_state->isActiveCell(_cursorRow, _cursorCol)) {
+                    Grid& gr = _state->grid();
+                    int check[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
+                    for (int d = 0; d < 4; ++d) {
+                        int nr = _cursorRow + check[d][0];
+                        int nc = _cursorCol + check[d][1];
+                        if (nr >= 0 && nr < _gridRows && nc >= 0 && nc < _gridCols) {
+                            if (tryMerge(_cursorRow, _cursorCol, nr, nc)) break;
                         }
                     }
                 }
+#endif
             }
             break;
 
         case UserAction::CONFIRM:
-            // Enter: 与光标格上的空格操作相同，尝试合并
+            // Enter 键：光标所在格为源格（必须是有效棋子），向第一个合法邻居合并
             {
 #ifdef HAS_GUI
                 auto [curR, curC] = _renderer->getCursorPosition();
@@ -287,18 +286,14 @@ void GameController::handleGameplay()
                 int curR = _cursorRow;
                 int curC = _cursorCol;
 #endif
-                Grid& gr = _state->grid();
-                const Cell& center = gr.at(curR, curC);
-                if (!center.isEmpty()) {
-                    bool merged = false;
+                if (_state->isActiveCell(curR, curC)) {
+                    Grid& gr = _state->grid();
                     int check[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
-                    for (int d = 0; d < 4 && !merged; ++d) {
+                    for (int d = 0; d < 4; ++d) {
                         int nr = curR + check[d][0];
                         int nc = curC + check[d][1];
                         if (nr >= 0 && nr < _gridRows && nc >= 0 && nc < _gridCols) {
-                            if (tryMerge(nr, nc, curR, curC)) {
-                                merged = true;
-                            }
+                            if (tryMerge(curR, curC, nr, nc)) break;
                         }
                     }
                 }
@@ -324,24 +319,31 @@ bool GameController::tryMerge(int srcRow, int srcCol, int dstRow, int dstCol)
 {
     if (!_state) return false;
 
+    // 校验源格必须是有效棋子（玩家选取的 5 个初始格之一或合并后的新位置）
+    if (!_state->isActiveCell(srcRow, srcCol)) return false;
+
     Grid& grid = _state->grid();
-    const Cell& center   = grid.at(dstRow, dstCol);
-    const Cell& neighbor = grid.at(srcRow, srcCol);
+    const Cell& source = grid.at(srcRow, srcCol);
+    const Cell& target = grid.at(dstRow, dstCol);
+
+    // 目标格不能为空
+    if (target.isEmpty()) return false;
 
     // 校验合并条件
-    if (!MergeRule::canMerge(center, neighbor)) return false;
+    if (!MergeRule::canMerge(source, target)) return false;
 
     // 计算合并结果
-    Cell result = MergeRule::getMergedCell(center, neighbor);
+    Cell result = MergeRule::getMergedCell(source, target);
 
-    // 确定方向
+    // 确定方向：源格 → 目标格
     Direction dir;
-    if (srcRow < dstRow)      dir = Direction::DOWN;
-    else if (srcRow > dstRow) dir = Direction::UP;
-    else if (srcCol < dstCol) dir = Direction::RIGHT;
-    else                      dir = Direction::LEFT;
+    if (dstRow < srcRow)      dir = Direction::UP;
+    else if (dstRow > srcRow) dir = Direction::DOWN;
+    else if (dstCol < srcCol) dir = Direction::LEFT;
+    else                      dir = Direction::RIGHT;
 
-    // 执行合并
+    // 执行合并：源位置置空，目标位置更新为合并结果
+    // （玩家棋子从源位置移动到目标位置）
     grid.mergeCells(srcRow, srcCol, dstRow, dstCol, result);
 
     // 记录操作
@@ -349,6 +351,10 @@ bool GameController::tryMerge(int srcRow, int srcCol, int dstRow, int dstCol)
               result.getLetter(), result.getNumber());
     _state->recordMove(move);
     _replayBuffer->record(move);
+
+    // 更新有效棋子：移除源位置，加入目标位置
+    _state->updateActiveCells(srcRow, srcCol, dstRow, dstCol);
+
     _cursorRow = dstRow;
     _cursorCol = dstCol;
 

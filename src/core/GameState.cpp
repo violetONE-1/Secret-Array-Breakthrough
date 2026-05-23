@@ -16,6 +16,9 @@ GameState::GameState(const Grid& initialGrid,
     , _timerStarted(false)
     , _gameOver(false)
 {
+    for (const auto& s : playerStarts) {
+        _activeCells.insert(s);
+    }
 }
 
 // ---- 盘面访问 ----
@@ -89,4 +92,22 @@ void GameState::endGame()
 int GameState::stepsTaken() const
 {
     return _stepsTaken;
+}
+
+// ---- 有效棋子集合 ----
+
+bool GameState::isActiveCell(int row, int col) const
+{
+    return _activeCells.find({row, col}) != _activeCells.end();
+}
+
+const std::set<std::pair<int, int>>& GameState::activeCells() const
+{
+    return _activeCells;
+}
+
+void GameState::updateActiveCells(int fromRow, int fromCol, int toRow, int toCol)
+{
+    _activeCells.erase({fromRow, fromCol});
+    _activeCells.insert({toRow, toCol});
 }

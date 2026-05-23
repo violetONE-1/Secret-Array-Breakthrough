@@ -25,6 +25,7 @@
 #include "Grid.hpp"
 #include "Move.hpp"
 #include <chrono>
+#include <set>
 #include <string>
 #include <vector>
 #include <utility>
@@ -46,6 +47,17 @@ public:
     const std::string& puzzleId() const;
 
     const std::vector<std::pair<int, int>>& playerStarts() const;
+
+    // ---- 有效棋子集合（active cells） ----
+
+    /** 检查某格是否为当前有效的棋子起点 */
+    bool isActiveCell(int row, int col) const;
+
+    /** 获取全部有效棋子坐标（只读） */
+    const std::set<std::pair<int, int>>& activeCells() const;
+
+    /** 合并后更新有效棋子：移除源位置，加入目标位置 */
+    void updateActiveCells(int fromRow, int fromCol, int toRow, int toCol);
 
     // ---- 操作记录 ----
 
@@ -84,6 +96,7 @@ private:
     Grid                                _grid;
     std::string                         _puzzleId;
     std::vector<std::pair<int, int>>    _playerStarts;
+    std::set<std::pair<int, int>>       _activeCells;
     int                                 _stepsTaken;
     std::vector<Move>                   _moveHistory;
     std::chrono::steady_clock::time_point _startTime;

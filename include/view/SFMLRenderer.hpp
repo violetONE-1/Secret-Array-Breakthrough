@@ -20,6 +20,7 @@
 
 #include "view/IRenderer.hpp"
 #include <SFML/Graphics.hpp>
+#include <set>
 #include <vector>
 #include <string>
 #include <utility>
@@ -51,23 +52,31 @@ public:
     bool isOpen() const override;
     void clearScreen() override;
     std::pair<int, int> getCursorPosition() const override;
+    std::pair<int, int> getSelectedCell() const override;
 
     // ---- 动画触发（由 Controller 在合并后调用） ----
 
     void triggerMergeAnim(int row, int col);
 
+    // ---- 全屏切换 ----
+
+    void toggleFullscreen();
+
 private:
     // ---- 布局常量 ----
-    static constexpr unsigned WINDOW_W = 1060;
-    static constexpr unsigned WINDOW_H = 760;
+    static constexpr unsigned WINDOW_W = 1400;
+    static constexpr unsigned WINDOW_H = 900;
     static constexpr float GRID_OFFSET_X = 30.0f;
     static constexpr float GRID_OFFSET_Y = 50.0f;
-    static constexpr float PANEL_X = 710.0f;
     static constexpr float PANEL_W = 320.0f;
+
+    /** 动态计算右侧面板 X 坐标 */
+    float panelX() const;
 
     // ---- 绘制辅助 ----
 
-    void drawGrid(const Grid& grid);
+    void drawGrid(const Grid& grid,
+                  const std::set<std::pair<int, int>>* activeCells = nullptr);
     void drawCellBg(int row, int col, const sf::Color& color);
     void drawCellText(int row, int col, const std::string& text, const sf::Color& color);
     void drawInfoPanel(const GameState& state);
@@ -119,6 +128,7 @@ private:
     UserAction _pendingAction;
     UIScreen   _screen;       // 当前显示的界面
     int        _puzzleCount;  // 题面列表项数（用于点击检测）
+    bool       _fullscreen;   // 是否全屏模式
 };
 
 #endif // HAS_GUI

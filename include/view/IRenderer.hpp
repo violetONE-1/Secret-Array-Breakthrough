@@ -84,6 +84,11 @@ public:
      *  因为控制台模式下光标由 GameController 自行管理。 */
     virtual std::pair<int, int> getCursorPosition() const { return {-1, -1}; }
 
+    /** 返回渲染器内部当前选中的源格位置 (row, col)。
+     *  用于两段式合并：先选中源格，再选目标格。
+     *  仅 GUI 渲染器需要实现。 */
+    virtual std::pair<int, int> getSelectedCell() const { return {-1, -1}; }
+
     /** 检查窗口/控制台是否仍然有效 */
     virtual bool isOpen() const = 0;
 

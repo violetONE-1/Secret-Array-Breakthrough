@@ -113,7 +113,7 @@ void ConsoleRenderer::render(const GameState& state)
     // 绘制游戏信息栏
     setColor(11);  // 亮青色
     std::cout << "============================================================\n";
-    std::cout << "  密阵突围 — 题面: " << state.puzzleId() << "\n";
+    std::cout << "  Matrix Breakthrough — Puzzle: " << state.puzzleId() << "\n";
     std::cout << "  步数: " << state.stepsTaken()
               << "    用时: " << std::fixed << std::setprecision(1)
               << state.elapsedSeconds() << " 秒\n";
@@ -135,7 +135,6 @@ void ConsoleRenderer::showMenu()
     setColor(14);  // 亮黄
     std::cout << "\n";
     std::cout << "  ╔══════════════════════════════════════╗\n";
-    std::cout << "  ║           密 阵 突 围                  ║\n";
     std::cout << "  ║       Matrix Breakthrough             ║\n";
     std::cout << "  ╠══════════════════════════════════════╣\n";
     std::cout << "  ║  1. 开始游戏 (选题)                    ║\n";
