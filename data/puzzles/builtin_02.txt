@@ -1,4 +1,4 @@
-# builtin_02 进阶挑战题
+# builtin_02 Advanced Challenge
 25 25
 X1 Q1 P9 I4 B9 N0 D9 W5 Y2 K5 P0 U7 M0 S1 N5 W7 C5 C7 B2 D5 N3 R8 M9 V9 E8
 G3 D0 B2 T0 D9 G5 U1 C6 T5 K2 M6 L7 R5 F3 O9 E3 L4 E8 L0 A3 O7 M7 N4 L6 E7

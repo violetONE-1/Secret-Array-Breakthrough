@@ -87,9 +87,9 @@ void PuzzleManager::createBuiltinPuzzles()
     std::srand(42);  // 固定种子，保证每次生成相同题面
 
     const char* names[] = {
-        "初级训练题",
-        "进阶挑战题",
-        "密阵大师题"
+        "Beginner Training",
+        "Advanced Challenge",
+        "Matrix Master"
     };
     const char* ids[] = { "builtin_01", "builtin_02", "builtin_03" };
 

@@ -24,8 +24,8 @@
 int main()
 {
     std::cout << "========================================\n";
-    std::cout << "  密阵突围 — Matrix Breakthrough\n";
-    std::cout << "  C++ 实训项目\n";
+    std::cout << "  Matrix Breakthrough\n";
+    std::cout << "  C++ Training Project\n";
     std::cout << "  Version 1.0.0\n";
     std::cout << "========================================\n\n";
 
@@ -33,12 +33,12 @@ int main()
         GameController controller;
         controller.run();
     } catch (const std::exception& e) {
-        std::cerr << "[FATAL] 未捕获的异常: " << e.what() << std::endl;
-        std::cerr << "按任意键退出..." << std::endl;
+        std::cerr << "[FATAL] Uncaught exception: " << e.what() << std::endl;
+        std::cerr << "Press any key to exit..." << std::endl;
         _getch();
         return 1;
     }
 
-    std::cout << "\n  感谢游玩！再见。\n";
+    std::cout << "\n  Thanks for playing! Goodbye.\n";
     return 0;
 }

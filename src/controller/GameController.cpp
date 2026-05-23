@@ -132,7 +132,7 @@ void GameController::handlePuzzleSelect()
     const auto& puzzles = _puzzleManager->all();
 
     if (puzzles.empty()) {
-        _renderer->showMessage("错误：没有可用的题面！请检查 data/puzzles/ 目录。");
+        _renderer->showMessage("Error: No puzzles available! Check data/puzzles/ directory.");
         _phase = GamePhase::MENU;
         return;
     }
