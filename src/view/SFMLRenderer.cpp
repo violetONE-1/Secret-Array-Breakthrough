@@ -105,6 +105,7 @@ void SFMLRenderer::toggleFullscreen()
 void SFMLRenderer::render(const GameState& state)
 {
     _screen = UIScreen::Gameplay;
+    _lastState = &state;
     const Grid& grid = state.grid();
     int rows = grid.rows();
     int cols = grid.cols();
@@ -1130,6 +1131,11 @@ UserAction SFMLRenderer::waitForAction()
                 UserAction a = processMouseEvent(*mouseEvt);
                 if (a != UserAction::NONE) return a;
             }
+        }
+
+        // 游戏界面持续重绘，使光标移动、选中状态即时可见
+        if (_screen == UIScreen::Gameplay && _lastState) {
+            render(*_lastState);
         }
 
         sf::sleep(sf::milliseconds(10));

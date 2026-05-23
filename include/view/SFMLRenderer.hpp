@@ -127,6 +127,7 @@ private:
     bool _animating;
 
     // 杂项
+    const GameState* _lastState = nullptr;  // 最近一次 render() 的状态（供 waitForAction 内重绘）
     UserAction _pendingAction;
     UIScreen   _screen;       // 当前显示的界面
     int        _puzzleCount;  // 题面列表项数（用于点击检测）
