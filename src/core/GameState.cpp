@@ -6,6 +6,7 @@
 
 #include "core/GameState.hpp"
 #include "core/MergeRule.hpp"
+#include <queue>
 
 GameState::GameState(const Grid& initialGrid,
                      const std::vector<std::pair<int, int>>& playerStarts,
@@ -132,20 +133,50 @@ bool GameState::isDeadEnd() const
     for (const auto& [r, c] : _activeCells) {
         if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
 
-        const Cell& src = _grid.at(r, c);
-        if (src.isEmpty()) continue;
+        const Cell& piece = _grid.at(r, c);
+        if (piece.isEmpty()) continue;
 
-        for (int d = 0; d < 4; ++d) {
-            int nr = r + dirs[d][0];
-            int nc = c + dirs[d][1];
+        // BFS：从当前棋子位置出发，沿空格滑行，搜索所有可达位置
+        // 若任一可达位置存在可合并邻居 → 该棋子有解 → 非死局
+        std::queue<std::pair<int, int>> q;
+        std::set<std::pair<int, int>> visited;
+        q.push({r, c});
+        visited.insert({r, c});
 
-            if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+        bool pieceAlive = false;
+        while (!q.empty()) {
+            auto [cr, cc] = q.front();
+            q.pop();
 
-            const Cell& dst = _grid.at(nr, nc);
-            // 可合并 或 可滑入空格 → 未死局
-            if (dst.isEmpty()) return false;
-            if (MergeRule::canMerge(src, dst)) return false;
+            for (int d = 0; d < 4; ++d) {
+                int nr = cr + dirs[d][0];
+                int nc = cc + dirs[d][1];
+
+                if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
+
+                const Cell& neighbor = _grid.at(nr, nc);
+                if (neighbor.isEmpty()) {
+                    // 空格：可滑行至此，加入 BFS 前沿
+                    auto next = std::make_pair(nr, nc);
+                    if (visited.find(next) == visited.end()) {
+                        visited.insert(next);
+                        q.push(next);
+                    }
+                } else {
+                    // 非空格：检查棋子内容是否可与之合并
+                    if (MergeRule::canMerge(piece, neighbor)) {
+                        pieceAlive = true;
+                        break;
+                    }
+                }
+            }
+            if (pieceAlive) break;
+        }
+
+        if (!pieceAlive) {
+            // 当前棋子通过滑动也找不到任何可合并邻居 → 全体死局
+            return true;
         }
     }
-    return true;  // 全部棋子无路可走
+    return false;  // 全部棋子均能找到合并目标
 }
