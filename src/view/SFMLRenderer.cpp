@@ -613,9 +613,9 @@ void SFMLRenderer::showLevelList(const std::vector<Puzzle>& puzzles,
         if (!unlocked) {
             title = std::to_string(levelNum) + ". [LOCKED]";
         } else if (cleared) {
-            title = std::to_string(levelNum) + ". " + puzzles[i].name() + " [CLEAR]";
+            title = "Level " + std::to_string(levelNum) + " [CLEAR]";
         } else {
-            title = std::to_string(levelNum) + ". " + puzzles[i].name() + " [NEW]";
+            title = "Level " + std::to_string(levelNum) + " [NEW]";
         }
         _text->setString(title);
         _text->setPosition(sf::Vector2f(bx + 15, y + 8));

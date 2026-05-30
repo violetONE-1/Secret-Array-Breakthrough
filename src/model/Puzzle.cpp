@@ -47,6 +47,14 @@ bool Puzzle::deserialize(const std::string& data, Puzzle& outPuzzle)
         size_t newlinePos = data.find('\n');
         if (newlinePos != std::string::npos) {
             std::string header = data.substr(1, newlinePos - 1);
+            // 去掉首尾空白（开头的空格 + 末尾的 \r）
+            size_t firstNonSpace = header.find_first_not_of(" \r\n");
+            if (firstNonSpace != std::string::npos) {
+                header = header.substr(firstNonSpace);
+            }
+            while (!header.empty() && (header.back() == '\r' || header.back() == '\n' || header.back() == ' ')) {
+                header.pop_back();
+            }
             size_t spacePos = header.find(' ');
             if (spacePos != std::string::npos) {
                 id = header.substr(0, spacePos);
