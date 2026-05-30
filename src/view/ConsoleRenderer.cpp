@@ -45,16 +45,19 @@ ConsoleRenderer::~ConsoleRenderer()
 
 // ---- 网格绘制 ----
 
-void ConsoleRenderer::drawGrid(const Grid& grid)
+void ConsoleRenderer::drawGrid(const GameState& state)
 {
+    const Grid& grid = state.grid();
     int rows = grid.rows();
     int cols = grid.cols();
+
+    const auto& playerCells = state.playerCells();
+    const auto& aiCells = state.aiCells();
 
     setColor(7);  // 白色
 
     // ---- 列标题 ----
-    // 打印列号，每个格子 3 字符宽度
-    std::cout << "\n     ";  // 左边留空
+    std::cout << "\n     ";
     for (int c = 0; c < cols; ++c) {
         std::cout << std::setw(3) << c;
     }
@@ -66,28 +69,35 @@ void ConsoleRenderer::drawGrid(const Grid& grid)
 
     // ---- 行数据 ----
     for (int r = 0; r < rows; ++r) {
-        // 行号
         std::cout << std::setw(3) << r << " |";
 
         for (int c = 0; c < cols; ++c) {
             const Cell& cell = grid.at(r, c);
+            bool isPlayer = playerCells.find({r, c}) != playerCells.end();
+            bool isAI = aiCells.find({r, c}) != aiCells.end();
 
-            if (cell.isSelected()) {
-                // 选中格子用亮黄色高亮背景
-                setColor(14);  // 亮黄
-                std::cout << "[" << cell.getLetter() << cell.getNumber() << "]";
-                setColor(7);   // 恢复白色
-            } else if (cell.isEmpty()) {
+            if (cell.isEmpty()) {
                 setColor(8);  // 灰色
                 std::cout << " . ";
                 setColor(7);
+            } else if (cell.isSelected()) {
+                setColor(14);  // 亮黄
+                std::cout << "[" << cell.getLetter() << cell.getNumber() << "]";
+                setColor(7);
+            } else if (isPlayer) {
+                setColor(14);  // 亮黄 — 玩家棋子
+                std::cout << "[" << cell.getLetter() << cell.getNumber() << "]";
+                setColor(7);
+            } else if (isAI) {
+                setColor(12);  // 亮红 — AI 棋子
+                std::cout << "<" << cell.getLetter() << cell.getNumber() << ">";
+                setColor(7);
             } else {
-                // 正常格子：字母+数字
-                std::cout << cell.toString();
+                std::cout << " " << cell.getLetter() << cell.getNumber();
             }
             std::cout << "|";
         }
-        std::cout << " " << r;  // 右侧行号
+        std::cout << " " << r;
         std::cout << "\n    +";
         for (int c = 0; c < cols; ++c) {
             std::cout << "---+";
@@ -96,6 +106,57 @@ void ConsoleRenderer::drawGrid(const Grid& grid)
     }
 
     // ---- 底部列号 ----
+    std::cout << "     ";
+    for (int c = 0; c < cols; ++c) {
+        std::cout << std::setw(3) << c;
+    }
+    std::cout << "\n";
+}
+
+void ConsoleRenderer::drawGrid(const Grid& grid)
+{
+    int rows = grid.rows();
+    int cols = grid.cols();
+
+    setColor(7);
+
+    std::cout << "\n     ";
+    for (int c = 0; c < cols; ++c) {
+        std::cout << std::setw(3) << c;
+    }
+    std::cout << "\n    +";
+    for (int c = 0; c < cols; ++c) {
+        std::cout << "---+";
+    }
+    std::cout << "\n";
+
+    for (int r = 0; r < rows; ++r) {
+        std::cout << std::setw(3) << r << " |";
+
+        for (int c = 0; c < cols; ++c) {
+            const Cell& cell = grid.at(r, c);
+
+            if (cell.isSelected()) {
+                setColor(14);
+                std::cout << "[" << cell.getLetter() << cell.getNumber() << "]";
+                setColor(7);
+            } else if (cell.isEmpty()) {
+                setColor(8);
+                std::cout << " . ";
+                setColor(7);
+            } else {
+                std::cout << " " << cell.getLetter() << cell.getNumber();
+            }
+            std::cout << "|";
+        }
+        std::cout << " " << r;
+        std::cout << "\n    +";
+        for (int c = 0; c < cols; ++c) {
+            std::cout << "---+";
+        }
+        std::cout << "\n";
+    }
+
     std::cout << "     ";
     for (int c = 0; c < cols; ++c) {
         std::cout << std::setw(3) << c;
@@ -117,15 +178,22 @@ void ConsoleRenderer::render(const GameState& state)
     std::cout << "  步数: " << state.stepsTaken()
               << "    用时: " << std::fixed << std::setprecision(1)
               << state.elapsedSeconds() << " 秒\n";
+    if (!_turnMessage.empty()) {
+        setColor(14);
+        std::cout << "  >>> " << _turnMessage << " <<<\n";
+        setColor(11);
+    }
+    std::cout << "  玩家棋子: " << state.playerCells().size()
+              << "   AI棋子: " << state.aiCells().size() << "\n";
     std::cout << "============================================================\n";
 
     // 绘制网格
-    drawGrid(grid);
+    drawGrid(state);
 
     // 操作提示
     setColor(8);  // 灰色
-    std::cout << "\n  [操作] 方向键:移动光标 | 空格/回车:合并或滑入空格\n";
-    std::cout << "          S:提交答案 | Q:返回菜单 | E:AI代走一步\n";
+    std::cout << "\n  [操作] 方向键:移动光标 | 空格/回车:选择并合并\n";
+    std::cout << "          S:提交 | Q:返回 | E:AI代走一步\n";
     setColor(7);
 }
 
@@ -442,6 +510,11 @@ UserAction ConsoleRenderer::parseKey(int ch)
 }
 
 bool ConsoleRenderer::isOpen() const { return _running; }
+
+void ConsoleRenderer::setTurnMessage(const std::string& msg)
+{
+    _turnMessage = msg;
+}
 
 void ConsoleRenderer::clearScreen()
 {

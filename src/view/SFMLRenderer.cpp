@@ -126,7 +126,7 @@ void SFMLRenderer::render(const GameState& state)
 
     _window.clear(sf::Color(215, 228, 245));  // 淡蓝色背景
 
-    drawGrid(grid, &state.activeCells());
+    drawGrid(state);
     drawInfoPanel(state);
 
     // 合并动画
@@ -149,11 +149,14 @@ void SFMLRenderer::render(const GameState& state)
 //  网格绘制
 // ================================================================
 
-void SFMLRenderer::drawGrid(const Grid& grid,
-                            const std::set<std::pair<int, int>>* activeCells)
+void SFMLRenderer::drawGrid(const GameState& state)
 {
+    const Grid& grid = state.grid();
     int rows = grid.rows();
     int cols = grid.cols();
+
+    const auto& playerCells = state.playerCells();
+    const auto& aiCells = state.aiCells();
 
     // 列标题
     _text->setCharacterSize(11);
@@ -187,8 +190,9 @@ void SFMLRenderer::drawGrid(const Grid& grid,
 
             bool isCursor = (r == _cursorRow && c == _cursorCol);
             bool isSelected = (r == _selectedRow && c == _selectedCol);
-            bool isActive = activeCells &&
-                            activeCells->find({r, c}) != activeCells->end();
+            bool isPlayerCell = playerCells.find({r, c}) != playerCells.end();
+            bool isAICell = aiCells.find({r, c}) != aiCells.end();
+            bool isAnyActive = isPlayerCell || isAICell;
             bool isValidTarget = false;
             for (const auto& n : validNeighbors) {
                 if (n.first == r && n.second == c) {
@@ -197,26 +201,40 @@ void SFMLRenderer::drawGrid(const Grid& grid,
                 }
             }
 
-            // 背景色：白底为主
+            // 背景色：按所属方区分
             sf::Color bgColor;
             if (cell.isEmpty()) {
                 bgColor = sf::Color(225, 228, 235);  // 空格：浅灰
             } else if (isSelected) {
                 bgColor = sf::Color(255, 255, 210);  // 选中：浅黄
-            } else if (isCursor) {
+            } else if (isCursor && !isPlayerCell && !isAICell) {
                 bgColor = sf::Color(190, 210, 240);  // 光标：浅蓝
+            } else if (isPlayerCell) {
+                bgColor = sf::Color(255, 250, 220);  // 玩家棋子：暖黄底
+            } else if (isAICell) {
+                bgColor = sf::Color(255, 225, 225);  // AI  棋子：浅红底
             } else {
                 bgColor = sf::Color::White;           // 普通格：白底
             }
 
             drawCellBg(r, c, bgColor);
 
-            // 有效棋子高亮（金黄色粗边框，最优先）
-            if (isActive) {
+            // 玩家棋子高亮（金黄色粗边框）
+            if (isPlayerCell) {
                 _rect.setPosition(pos);
                 _rect.setSize(sf::Vector2f(_cellSize - 2, _cellSize - 2));
                 _rect.setFillColor(sf::Color::Transparent);
                 _rect.setOutlineColor(sf::Color(255, 180, 30));
+                _rect.setOutlineThickness(3.0f);
+                _window.draw(_rect);
+            }
+
+            // AI 棋子高亮（红色粗边框）
+            if (isAICell) {
+                _rect.setPosition(pos);
+                _rect.setSize(sf::Vector2f(_cellSize - 2, _cellSize - 2));
+                _rect.setFillColor(sf::Color::Transparent);
+                _rect.setOutlineColor(sf::Color(220, 60, 60));
                 _rect.setOutlineThickness(3.0f);
                 _window.draw(_rect);
             }
@@ -229,7 +247,7 @@ void SFMLRenderer::drawGrid(const Grid& grid,
                 _rect.setOutlineColor(sf::Color(60, 130, 230));
                 _rect.setOutlineThickness(2.0f);
                 _window.draw(_rect);
-            } else if (isCursor && !isActive) {
+            } else if (isCursor && !isAnyActive) {
                 _rect.setPosition(pos);
                 _rect.setSize(sf::Vector2f(_cellSize - 2, _cellSize - 2));
                 _rect.setFillColor(sf::Color::Transparent);
@@ -345,13 +363,14 @@ void SFMLRenderer::drawInfoPanel(const GameState& state)
     drawLine("Grid:", std::to_string(state.grid().rows()) + "x" +
              std::to_string(state.grid().cols()));
 
-    // 有效棋子数
+    // 双方棋子数
     _text->setFillColor(sf::Color(200, 130, 20));
-    _text->setString("Pieces:");
+    _text->setString("Player:");
     _text->setPosition(sf::Vector2f(px + 15, y));
     _window.draw(*_text);
     _text->setFillColor(sf::Color(20, 20, 40));
-    _text->setString(std::to_string(state.activeCells().size()));
+    _text->setString(std::to_string(state.playerCells().size()) + " / AI: " +
+                     std::to_string(state.aiCells().size()));
     _text->setPosition(sf::Vector2f(px + 120, y));
     _window.draw(*_text);
     _text->setFillColor(sf::Color(80, 80, 100));
@@ -398,6 +417,16 @@ void SFMLRenderer::drawInfoPanel(const GameState& state)
         y += 20.0f;
     };
 
+    // 回合提示（VS AI 模式）
+    if (!_turnMessage.empty()) {
+        _text->setFillColor(sf::Color(200, 130, 20));
+        _text->setCharacterSize(15);
+        drawHint(">>> " + _turnMessage + " <<<");
+        _text->setCharacterSize(12);
+        _text->setFillColor(sf::Color(140, 140, 160));
+        y += 8.0f;
+    }
+
     drawHint("Controls:");
     drawHint("  Arrow keys: Move cursor");
     drawHint("  Click: Select cell");
@@ -432,9 +461,10 @@ void SFMLRenderer::showMenu()
     // 菜单按钮
     struct Btn { std::string text; float y; UserAction action; };
     Btn buttons[] = {
-        {"1. Start Game (Select Puzzle)", 240, UserAction::SELECT_PUZZLE_1},
-        {"2. View Leaderboard",          310, UserAction::VIEW_LEADERBOARD},
-        {"3. Exit",                      380, UserAction::QUIT}
+        {"1. Start Game (Select Puzzle)", 210, UserAction::SELECT_PUZZLE_1},
+        {"2. View Leaderboard",           270, UserAction::VIEW_LEADERBOARD},
+        {"3. VS AI Battle",               330, UserAction::VS_AI_NORMAL},
+        {"4. Exit",                       390, UserAction::QUIT}
     };
 
     for (const auto& btn : buttons) {
@@ -456,8 +486,8 @@ void SFMLRenderer::showMenu()
 
     _text->setCharacterSize(14);
     _text->setFillColor(sf::Color(140, 140, 160));
-    _text->setString("Press 1-3 or click buttons  |  F11: Toggle fullscreen");
-    centerText(*_text, 0, 470, ww, 30);
+    _text->setString("Press 1-4 or click buttons  |  F11: Toggle fullscreen");
+    centerText(*_text, 0, 480, ww, 30);
     _window.draw(*_text);
 
     _window.display();
@@ -1267,9 +1297,10 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
             return mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
         };
 
-        if (inside(240.0f))      return UserAction::SELECT_PUZZLE_1;
-        if (inside(310.0f))      return UserAction::VIEW_LEADERBOARD;
-        if (inside(380.0f))      return UserAction::QUIT;
+        if (inside(210.0f))      return UserAction::SELECT_PUZZLE_1;
+        if (inside(270.0f))      return UserAction::VIEW_LEADERBOARD;
+        if (inside(330.0f))      return UserAction::VS_AI_NORMAL;
+        if (inside(390.0f))      return UserAction::QUIT;
         break;
     }
 
@@ -1475,6 +1506,11 @@ std::pair<int, int> SFMLRenderer::getSelectedCell() const
 void SFMLRenderer::clearSelection()
 {
     _hasSelection = false;
+}
+
+void SFMLRenderer::setTurnMessage(const std::string& msg)
+{
+    _turnMessage = msg;
 }
 
 void SFMLRenderer::clearScreen()

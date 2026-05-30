@@ -7,20 +7,29 @@
 #include "core/GameState.hpp"
 #include "core/MergeRule.hpp"
 #include <queue>
+#include <algorithm>
 
 GameState::GameState(const Grid& initialGrid,
                      const std::vector<std::pair<int, int>>& playerStarts,
+                     const std::vector<std::pair<int, int>>& aiStarts,
                      const std::string& puzzleId)
     : _grid(initialGrid)
     , _puzzleId(puzzleId)
     , _playerStarts(playerStarts)
     , _stepsTaken(0)
     , _slideCount(0)
+    , _playerSteps(0)
+    , _aiSteps(0)
+    , _playerSlideCount(0)
+    , _aiSlideCount(0)
     , _timerStarted(false)
     , _gameOver(false)
 {
     for (const auto& s : playerStarts) {
-        _activeCells.insert(s);
+        _playerCells.insert(s);
+    }
+    for (const auto& s : aiStarts) {
+        _aiCells.insert(s);
     }
 }
 
@@ -38,21 +47,100 @@ const std::vector<std::pair<int, int>>& GameState::playerStarts() const
     return _playerStarts;
 }
 
+// ---- 棋子归属 ----
+
+CellOwner GameState::cellOwner(int row, int col) const
+{
+    auto pos = std::make_pair(row, col);
+    if (_playerCells.find(pos) != _playerCells.end()) return CellOwner::Player;
+    if (_aiCells.find(pos) != _aiCells.end()) return CellOwner::AI;
+    return CellOwner::None;
+}
+
+const std::set<std::pair<int, int>>& GameState::playerCells() const
+{
+    return _playerCells;
+}
+
+const std::set<std::pair<int, int>>& GameState::aiCells() const
+{
+    return _aiCells;
+}
+
+std::set<std::pair<int, int>> GameState::allActiveCells() const
+{
+    std::set<std::pair<int, int>> result = _playerCells;
+    result.insert(_aiCells.begin(), _aiCells.end());
+    return result;
+}
+
+bool GameState::isOwnCell(CellOwner owner, int row, int col) const
+{
+    auto pos = std::make_pair(row, col);
+    if (owner == CellOwner::Player) return _playerCells.find(pos) != _playerCells.end();
+    if (owner == CellOwner::AI)     return _aiCells.find(pos) != _aiCells.end();
+    return false;
+}
+
+// ---- 棋子操作 ----
+
+void GameState::moveOwnCell(CellOwner owner, int fromRow, int fromCol, int toRow, int toCol)
+{
+    if (owner == CellOwner::Player) {
+        _playerCells.erase({fromRow, fromCol});
+        _playerCells.insert({toRow, toCol});
+    } else if (owner == CellOwner::AI) {
+        _aiCells.erase({fromRow, fromCol});
+        _aiCells.insert({toRow, toCol});
+    }
+}
+
+void GameState::conquerCell(CellOwner attacker, int srcRow, int srcCol, int dstRow, int dstCol)
+{
+    auto dst = std::make_pair(dstRow, dstCol);
+    if (attacker == CellOwner::Player) {
+        _playerCells.erase({srcRow, srcCol});
+        _playerCells.insert(dst);
+        _aiCells.erase(dst);  // dst was AI's, now conquered
+    } else {
+        _aiCells.erase({srcRow, srcCol});
+        _aiCells.insert(dst);
+        _playerCells.erase(dst);  // dst was player's, now conquered
+    }
+}
+
+void GameState::selfMerge(CellOwner owner, int srcRow, int srcCol, int dstRow, int dstCol)
+{
+    auto src = std::make_pair(srcRow, srcCol);
+    auto dst = std::make_pair(dstRow, dstCol);
+    if (owner == CellOwner::Player) {
+        _playerCells.erase(src);
+        // dst stays in _playerCells
+    } else {
+        _aiCells.erase(src);
+        // dst stays in _aiCells
+    }
+}
+
 // ---- 操作记录 ----
 
-void GameState::recordMove(const Move& move)
+void GameState::recordMove(const Move& move, CellOwner owner)
 {
-    // 首次操作时启动计时器
     if (!_timerStarted) {
         _startTime = std::chrono::steady_clock::now();
         _timerStarted = true;
     }
 
     _moveHistory.push_back(move);
+    _moveOwners.push_back(owner);
     ++_stepsTaken;
     if (move.moveType == MoveType::SLIDE) {
         ++_slideCount;
+        if (owner == CellOwner::Player) ++_playerSlideCount;
+        else ++_aiSlideCount;
     }
+    if (owner == CellOwner::Player) ++_playerSteps;
+    else ++_aiSteps;
 }
 
 const std::vector<Move>& GameState::moveHistory() const
@@ -60,45 +148,20 @@ const std::vector<Move>& GameState::moveHistory() const
     return _moveHistory;
 }
 
-// ---- 计时 ----
-
-double GameState::elapsedSeconds() const
+int GameState::stepsTakenBy(CellOwner owner) const
 {
-    // 玩家尚未做出任何操作时返回 0
-    if (!_timerStarted) {
-        return 0.0;
-    }
-
-    auto now = std::chrono::steady_clock::now();
-    auto diff = std::chrono::duration<double>(now - _startTime);
-    return diff.count();
+    if (owner == CellOwner::Player) return _playerSteps;
+    if (owner == CellOwner::AI)     return _aiSteps;
+    return _stepsTaken;
 }
 
-// ---- 准确率 ----
-
-double GameState::accuracy() const
+double GameState::accuracyBy(CellOwner owner) const
 {
-    // 方案A：准确率只计合并操作，滑行不影响
-    int mergeCount = _stepsTaken - _slideCount;
+    int stepCount = (owner == CellOwner::Player) ? _playerSteps : _aiSteps;
+    int slideCount = (owner == CellOwner::Player) ? _playerSlideCount : _aiSlideCount;
+    int mergeCount = stepCount - slideCount;
     if (mergeCount <= 0) return 0.0;
-    return 1.0;  // 所有合并均为有效操作
-}
-
-int GameState::slideCount() const
-{
-    return _slideCount;
-}
-
-// ---- 生命期 ----
-
-bool GameState::isOver() const
-{
-    return _gameOver;
-}
-
-void GameState::endGame()
-{
-    _gameOver = true;
+    return 1.0;
 }
 
 int GameState::stepsTaken() const
@@ -106,44 +169,41 @@ int GameState::stepsTaken() const
     return _stepsTaken;
 }
 
-// ---- 有效棋子集合 ----
+// ---- 计时 ----
 
-bool GameState::isActiveCell(int row, int col) const
+double GameState::elapsedSeconds() const
 {
-    return _activeCells.find({row, col}) != _activeCells.end();
+    if (!_timerStarted) return 0.0;
+    auto now = std::chrono::steady_clock::now();
+    auto diff = std::chrono::duration<double>(now - _startTime);
+    return diff.count();
 }
 
-const std::set<std::pair<int, int>>& GameState::activeCells() const
-{
-    return _activeCells;
-}
+// ---- 生命期 ----
 
-void GameState::updateActiveCells(int fromRow, int fromCol, int toRow, int toCol)
+bool GameState::hasValidMoves(CellOwner owner) const
 {
-    _activeCells.erase({fromRow, fromCol});
-    _activeCells.insert({toRow, toCol});
-}
+    const std::set<std::pair<int, int>>* cells = nullptr;
+    if (owner == CellOwner::Player) cells = &_playerCells;
+    else if (owner == CellOwner::AI) cells = &_aiCells;
+    else return false;
 
-bool GameState::isDeadEnd() const
-{
+    if (!cells) return false;
+
     const int rows = _grid.rows();
     const int cols = _grid.cols();
     const int dirs[4][2] = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
 
-    for (const auto& [r, c] : _activeCells) {
-        if (r < 0 || r >= rows || c < 0 || c >= cols) continue;
-
+    for (const auto& [r, c] : *cells) {
         const Cell& piece = _grid.at(r, c);
         if (piece.isEmpty()) continue;
 
         // BFS：从当前棋子位置出发，沿空格滑行，搜索所有可达位置
-        // 若任一可达位置存在可合并邻居 → 该棋子有解 → 非死局
         std::queue<std::pair<int, int>> q;
         std::set<std::pair<int, int>> visited;
         q.push({r, c});
         visited.insert({r, c});
 
-        bool pieceAlive = false;
         while (!q.empty()) {
             auto [cr, cc] = q.front();
             q.pop();
@@ -165,18 +225,26 @@ bool GameState::isDeadEnd() const
                 } else {
                     // 非空格：检查棋子内容是否可与之合并
                     if (MergeRule::canMerge(piece, neighbor)) {
-                        pieceAlive = true;
-                        break;
+                        return true;
                     }
                 }
             }
-            if (pieceAlive) break;
-        }
-
-        if (!pieceAlive) {
-            // 当前棋子通过滑动也找不到任何可合并邻居 → 全体死局
-            return true;
         }
     }
-    return false;  // 全部棋子均能找到合并目标
+    return false;
+}
+
+bool GameState::isOver() const
+{
+    return _gameOver;
+}
+
+void GameState::endGame()
+{
+    _gameOver = true;
+}
+
+bool GameState::gameOver() const
+{
+    return _gameOver;
 }

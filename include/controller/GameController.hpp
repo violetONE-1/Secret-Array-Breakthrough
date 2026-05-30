@@ -104,6 +104,28 @@ private:
     /** 提交答题结果 */
     void submitAnswer();
 
+    // ---- VS AI 辅助 ----
+
+    /** 玩家回合：等待一个玩家操作并执行，成功返回 true，无棋可走返回 false */
+    bool processVSAIPlayerAction();
+
+    /** AI 回合：AI 走一步，成功返回 true，无棋可走返回 false */
+    bool executeVSAIAIAction();
+
+    /** VS AI 结束后结算并展示 */
+    void finishVSAI();
+
+    /**
+     * 通用合并操作（供人机双方使用）。
+     * 自动判断目标归属，更新棋子集合并记录操作。
+     */
+    bool doAIMerge(CellOwner owner, int srcRow, int srcCol, int dstRow, int dstCol);
+
+    /**
+     * 通用滑行操作（供人机双方使用）。
+     */
+    bool doAISlide(CellOwner owner, int srcRow, int srcCol, int dstRow, int dstCol);
+
     // ---- 拥有 (unique_ptr) ----
 
     std::unique_ptr<FileManager>    _fileManager;
@@ -133,9 +155,6 @@ private:
     bool        _vsAI;
     int         _aiDelayMs;
     AIStrategy  _aiStrategy;
-    Grid        _initialGridSnapshot;
-    ScoreRecord _playerScoreRecord;
-    std::vector<Move> _playerMoveHistory;
 };
 
 #endif // GAMECONTROLLER_HPP

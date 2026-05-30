@@ -43,10 +43,12 @@ public:
     UserAction waitForAction() override;
     bool isOpen() const override;
     void clearScreen() override;
+    void setTurnMessage(const std::string& msg) override;
 
 private:
     /** 绘制网格框架（边框 + 坐标轴）及每个 Cell 的内容 */
-    void drawGrid(const Grid& grid);
+    void drawGrid(const GameState& state);
+    void drawGrid(const Grid& grid);  // 用于 promptStartingCells（无归属信息）
 
     /** 设置控制台光标位置（列, 行） */
     void gotoxy(int x, int y);
@@ -60,6 +62,7 @@ private:
     HANDLE _hConsole;
     HANDLE _hInput;
     bool   _running;
+    std::string _turnMessage;
 };
 
 #endif // CONSOLERENDERER_HPP

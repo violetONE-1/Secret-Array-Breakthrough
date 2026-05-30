@@ -26,19 +26,27 @@ std::string AIPlayer::strategyName(AIStrategy s)
     return "Unknown";
 }
 
-// ---- 查找所有合法操作（合并 + 滑行） ----
+// ---- 查找所有合法操作（全盘活跃棋子） ----
 
 std::vector<AIMove> AIPlayer::findAllValidMoves(const GameState& state) const
 {
+    return findAllValidMoves(state, state.allActiveCells());
+}
+
+// ---- 查找所有合法操作（指定棋子集合） ----
+
+std::vector<AIMove> AIPlayer::findAllValidMoves(
+    const GameState& state,
+    const std::set<std::pair<int, int>>& cells) const
+{
     std::vector<AIMove> result;
     const Grid& grid = state.grid();
-    const auto& activeCells = state.activeCells();
 
     static const int dirs[4][2] = {
         {-1, 0}, {1, 0}, {0, -1}, {0, 1}
     };
 
-    for (const auto& [srcRow, srcCol] : activeCells) {
+    for (const auto& [srcRow, srcCol] : cells) {
         const Cell& src = grid.at(srcRow, srcCol);
         if (src.isEmpty()) continue;
 
@@ -77,11 +85,32 @@ std::vector<AIMove> AIPlayer::findAllValidMoves(const GameState& state) const
     return result;
 }
 
-// ---- 查找最佳操作 ----
+// ---- 查找最佳操作（全盘） ----
 
 std::optional<AIMove> AIPlayer::findBestMove(const GameState& state) const
 {
     std::vector<AIMove> moves = findAllValidMoves(state);
+    if (moves.empty()) {
+        return std::nullopt;
+    }
+
+    switch (_strategy) {
+        case AIStrategy::RANDOM:
+            return randomPick(moves);
+        case AIStrategy::GREEDY:
+            return greedyPick(moves);
+    }
+
+    return randomPick(moves);
+}
+
+// ---- 查找最佳操作（指定棋子集合） ----
+
+std::optional<AIMove> AIPlayer::findBestMove(
+    const GameState& state,
+    const std::set<std::pair<int, int>>& myCells) const
+{
+    std::vector<AIMove> moves = findAllValidMoves(state, myCells);
     if (moves.empty()) {
         return std::nullopt;
     }

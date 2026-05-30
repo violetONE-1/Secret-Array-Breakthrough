@@ -109,6 +109,13 @@ public:
     /** 检查窗口/控制台是否仍然有效 */
     virtual bool isOpen() const = 0;
 
+    /**
+     * 设置当前回合提示消息（如"你的回合" / "AI 思考中..."）。
+     * 渲染器可在 render() 时将其显示在界面上。
+     * 默认无操作，子类可覆盖。
+     */
+    virtual void setTurnMessage(const std::string& msg) {}
+
     // ---- 杂项 ----
 
     /** 清屏 */

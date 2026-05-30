@@ -49,6 +49,7 @@ public:
     void showVSResult(const ScoreRecord& playerRecord,
                       const ScoreRecord& aiRecord,
                       const std::string& winner) override;
+    void setTurnMessage(const std::string& msg) override;
     std::string promptPlayerName() override;
     std::vector<std::pair<int, int>> promptStartingCells(
         const Grid& grid, int count) override;
@@ -81,8 +82,7 @@ private:
 
     // ---- 绘制辅助 ----
 
-    void drawGrid(const Grid& grid,
-                  const std::set<std::pair<int, int>>* activeCells = nullptr);
+    void drawGrid(const GameState& state);
     void drawCellBg(int row, int col, const sf::Color& color);
     void drawCellText(int row, int col, const std::string& text, const sf::Color& color);
     void drawInfoPanel(const GameState& state);
@@ -138,6 +138,7 @@ private:
     UIScreen   _screen;       // 当前显示的界面
     int        _puzzleCount;  // 题面列表项数（用于点击检测）
     bool       _fullscreen;   // 是否全屏模式
+    std::string _turnMessage; // 当前回合提示消息
 };
 
 #endif // HAS_GUI

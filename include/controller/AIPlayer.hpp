@@ -49,9 +49,22 @@ public:
     std::optional<AIMove> findBestMove(const GameState& state) const;
 
     /**
+     * 从指定的己方棋子集合中查找最佳操作。
+     * 用于 VS AI 同台对战模式：AI 只从自己的 5 个棋子中搜索。
+     */
+    std::optional<AIMove> findBestMove(const GameState& state,
+                                       const std::set<std::pair<int, int>>& myCells) const;
+
+    /**
      * 查找当前盘面下所有合法操作（合并 + 滑行，仅从活跃棋子出发）。
      */
     std::vector<AIMove> findAllValidMoves(const GameState& state) const;
+
+    /**
+     * 从指定棋子集合中查找所有合法操作。
+     */
+    std::vector<AIMove> findAllValidMoves(const GameState& state,
+                                          const std::set<std::pair<int, int>>& cells) const;
 
     /**
      * AI 从初始网格中自选 count 个起始格子。
