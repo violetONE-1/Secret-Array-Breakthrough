@@ -1206,8 +1206,7 @@ UserAction SFMLRenderer::processKeyEvent(const sf::Event::KeyPressed& keyEvent)
                 int dr = std::abs(_cursorRow - _selectedRow);
                 int dc = std::abs(_cursorCol - _selectedCol);
                 if (dr + dc == 1) {
-                    // 相邻格：执行合并
-                    _hasSelection = false;
+                    // 相邻格：执行合并，由控制器在处理完后调用 clearSelection
                     return UserAction::SELECT_CELL;
                 }
                 // 不相邻：重选到新位置
