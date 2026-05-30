@@ -1336,6 +1336,21 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
         break;
     }
 
+    case UIScreen::VSAIMenu: {
+        float ww = static_cast<float>(_window.getSize().x);
+        float bx = ww / 2.0f - 240.0f;
+        float bw = 480.0f, bh = 50.0f;
+
+        auto inside = [&](float by) {
+            return mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
+        };
+
+        if (inside(240.0f))  return UserAction::SELECT_PUZZLE_1;  // Normal
+        if (inside(310.0f))  return UserAction::SELECT_PUZZLE_2;  // Advanced
+        if (inside(380.0f))  return UserAction::SELECT_PUZZLE_3;  // Back
+        break;
+    }
+
     default:
         // Leaderboard / Result / Message / NamePrompt：任意点击视为确认/继续
         return UserAction::CONFIRM;
