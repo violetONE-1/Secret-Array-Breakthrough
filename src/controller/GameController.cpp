@@ -865,7 +865,7 @@ void GameController::finishVSAI()
 
     std::string aiName = "AI(" + AIPlayer::strategyName(_aiStrategy) + ")";
 
-    // 玩家成绩（从共享 GameState 中提取）
+    // 玩家成绩
     ScoreRecord playerRecord(
         _player.name(),
         _state->puzzleId(),
@@ -884,6 +884,14 @@ void GameController::finishVSAI()
         _state->accuracyBy(CellOwner::AI),
         timestamp.str()
     );
+
+    // VS AI 模式：总分 = 步数 × 10（不计时间 / 正确率）
+    {
+        int playerSteps = _state->stepsTakenBy(CellOwner::Player);
+        int aiSteps = _state->stepsTakenBy(CellOwner::AI);
+        playerRecord.setScore(playerSteps * 10);
+        aiRecord.setScore(aiSteps * 10);
+    }
 
     // 判定胜负
     std::string winner;

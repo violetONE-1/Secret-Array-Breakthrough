@@ -38,6 +38,8 @@ double             ScoreRecord::accuracy()    const { return _accuracy; }
 int                ScoreRecord::score()       const { return _score; }
 const std::string& ScoreRecord::timestamp()   const { return _timestamp; }
 
+void ScoreRecord::setScore(int score) { _score = score; }
+
 // ---- 得分计算 ----
 
 int ScoreRecord::calculateScore(double timeSeconds, int steps, double accuracy)

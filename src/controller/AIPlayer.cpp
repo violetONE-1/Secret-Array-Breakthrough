@@ -129,6 +129,17 @@ std::optional<AIMove> AIPlayer::findBestMove(
 
 std::optional<AIMove> AIPlayer::randomPick(const std::vector<AIMove>& moves) const
 {
+    static std::mt19937 rng(std::random_device{}());
+
+    // 40% 概率完全随机选（不论合并/滑行）
+    {
+        std::uniform_int_distribution<int> chaos(1, 100);
+        if (chaos(rng) <= 40) {
+            std::uniform_int_distribution<size_t> all(0, moves.size() - 1);
+            return moves[all(rng)];
+        }
+    }
+
     // 分离合并和滑行
     std::vector<const AIMove*> merges;
     std::vector<const AIMove*> slides;
@@ -139,8 +150,6 @@ std::optional<AIMove> AIPlayer::randomPick(const std::vector<AIMove>& moves) con
             slides.push_back(&m);
         }
     }
-
-    static std::mt19937 rng(std::random_device{}());
 
     // 70% 概率选合并（若存在），30% 选滑行
     if (!merges.empty() && !slides.empty()) {
@@ -169,6 +178,17 @@ std::optional<AIMove> AIPlayer::randomPick(const std::vector<AIMove>& moves) con
 
 std::optional<AIMove> AIPlayer::greedyPick(const std::vector<AIMove>& moves) const
 {
+    static std::mt19937 rng(std::random_device{}());
+
+    // 15% 概率完全随机选
+    {
+        std::uniform_int_distribution<int> chaos(1, 100);
+        if (chaos(rng) <= 15) {
+            std::uniform_int_distribution<size_t> all(0, moves.size() - 1);
+            return moves[all(rng)];
+        }
+    }
+
     // 分离合并和滑行
     std::vector<const AIMove*> merges;
     std::vector<const AIMove*> slides;
@@ -195,7 +215,6 @@ std::optional<AIMove> AIPlayer::greedyPick(const std::vector<AIMove>& moves) con
 
     // 无合并时随机滑行
     if (!slides.empty()) {
-        static std::mt19937 rng(std::random_device{}());
         std::uniform_int_distribution<size_t> sd(0, slides.size() - 1);
         return *slides[sd(rng)];
     }

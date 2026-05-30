@@ -47,6 +47,9 @@ public:
     int                score()       const;
     const std::string& timestamp()   const;
 
+    /** 手动覆写总分（用于 VS AI 模式自定义计分） */
+    void setScore(int score);
+
     // ---- 序列化 ----
 
     /**
