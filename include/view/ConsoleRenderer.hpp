@@ -28,6 +28,9 @@ public:
     void render(const GameState& state) override;
     void showMenu() override;
     void showPuzzleList(const std::vector<Puzzle>& puzzles) override;
+    void showLevelList(const std::vector<Puzzle>& puzzles,
+                       int maxUnlocked,
+                       const std::vector<int>& bestScores) override;
     void showLeaderboard(const std::vector<ScoreRecord>& records) override;
     void showResult(const ScoreRecord& record,
                     const std::vector<Move>& moveHistory) override;

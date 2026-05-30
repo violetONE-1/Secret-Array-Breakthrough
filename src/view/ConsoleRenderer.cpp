@@ -205,7 +205,7 @@ void ConsoleRenderer::showMenu()
     std::cout << "  ╔══════════════════════════════════════╗\n";
     std::cout << "  ║       Matrix Breakthrough             ║\n";
     std::cout << "  ╠══════════════════════════════════════╣\n";
-    std::cout << "  ║  1. 开始游戏 (选题)                    ║\n";
+    std::cout << "  ║  1. 闯关模式                           ║\n";
     std::cout << "  ║  2. 查看排行榜                         ║\n";
     std::cout << "  ║  3. VS AI 对战                        ║\n";
     std::cout << "  ║  4. 退出                               ║\n";
@@ -235,6 +235,59 @@ void ConsoleRenderer::showPuzzleList(const std::vector<Puzzle>& puzzles)
               << std::setw(36) << std::right << "║\n";
     std::cout << "  ╚══════════════════════════════════════╝\n";
     std::cout << "\n  请选择题号：";
+}
+
+void ConsoleRenderer::showLevelList(const std::vector<Puzzle>& puzzles,
+                                     int maxUnlocked,
+                                     const std::vector<int>& bestScores)
+{
+    clearScreen();
+    setColor(14);
+    std::cout << "\n  ╔══════════════════════════════════════════════════════╗\n";
+    std::cout << "  ║               闯  关  模  式                       ║\n";
+    std::cout << "  ╠══════════════╦════════╦══════════╦═══════════════════╣\n";
+    std::cout << "  ║ 关卡         ║ 盘面   ║ 状态     ║ 最高分            ║\n";
+    std::cout << "  ╠══════════════╬════════╬══════════╬═══════════════════╣\n";
+    setColor(7);
+
+    for (int i = 0; i < static_cast<int>(puzzles.size()); ++i) {
+        int levelNum = i + 1;
+        bool unlocked = levelNum <= maxUnlocked;
+        bool cleared = (bestScores[i] > 0);
+
+        std::string status;
+        int statusColor = 8;
+        if (!unlocked) {
+            status = "LOCKED";
+            statusColor = 8;
+        } else if (cleared) {
+            status = "CLEAR";
+            statusColor = 10;
+        } else {
+            status = "NEW";
+            statusColor = 14;
+        }
+
+        std::cout << "  ║  " << (i + 1) << ". "
+                  << std::setw(12) << std::left << puzzles[i].name() << "║ "
+                  << std::setw(5) << (std::to_string(puzzles[i].gridSize()) + "x" +
+                                      std::to_string(puzzles[i].gridSize()))
+                  << " ║ ";
+        setColor(statusColor);
+        std::cout << std::setw(7) << status;
+        setColor(7);
+        std::cout << " ║ "
+                  << std::setw(12) << (cleared ? std::to_string(bestScores[i]) : "-")
+                  << " ║\n";
+    }
+
+    std::cout << "  ╠══════════════╩════════╩══════════╩═══════════════════╣\n";
+    setColor(14);
+    std::cout << "  ║  " << (puzzles.size() + 1) << ". 返回主菜单"
+              << std::setw(35) << std::right << "║\n";
+    setColor(7);
+    std::cout << "  ╚══════════════════════════════════════════════════════╝\n";
+    std::cout << "\n  请选择关卡 (1-" << puzzles.size() << "): ";
 }
 
 void ConsoleRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)

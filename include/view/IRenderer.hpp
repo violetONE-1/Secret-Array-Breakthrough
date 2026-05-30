@@ -62,6 +62,16 @@ public:
     /** 显示题面选择列表 */
     virtual void showPuzzleList(const std::vector<Puzzle>& puzzles) = 0;
 
+    /**
+     * 显示关卡列表（闯关模式）。
+     * @param puzzles     关卡列表（下标 0 = 第 1 关）
+     * @param maxUnlocked 当前已解锁的最大关卡（1-indexed）
+     * @param bestScores  每关的历史最高分（长度 = puzzles.size()）
+     */
+    virtual void showLevelList(const std::vector<Puzzle>& puzzles,
+                               int maxUnlocked,
+                               const std::vector<int>& bestScores) = 0;
+
     /** 显示排行榜 */
     virtual void showLeaderboard(const std::vector<ScoreRecord>& records) = 0;
 

@@ -28,6 +28,7 @@
 #include "model/FileManager.hpp"
 #include "model/PuzzleManager.hpp"
 #include "model/Leaderboard.hpp"
+#include "model/Progress.hpp"
 #include "model/ReplayBuffer.hpp"
 #include "model/Player.hpp"
 #include "model/ScoreRecord.hpp"
@@ -85,6 +86,7 @@ private:
 
     void handleMenu();
     void handlePuzzleSelect();
+    void handleLevelSelect();
     void handleGameplay();
     void handleResult();
     void handleLeaderboard();
@@ -131,6 +133,7 @@ private:
     std::unique_ptr<FileManager>    _fileManager;
     std::unique_ptr<PuzzleManager>  _puzzleManager;
     std::unique_ptr<Leaderboard>    _leaderboard;
+    std::unique_ptr<Progress>       _progress;
     std::unique_ptr<ReplayBuffer>   _replayBuffer;
     std::unique_ptr<IRenderer>      _renderer;
     std::unique_ptr<InputHandler>   _inputHandler;
@@ -149,6 +152,7 @@ private:
     int _cursorCol;
     int _gridRows;
     int _gridCols;
+    int _currentLevel;  // 闯关模式当前关卡（0 = 非闯关模式）
 
     // ---- VS AI 状态 ----
 

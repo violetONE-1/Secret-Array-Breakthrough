@@ -461,7 +461,7 @@ void SFMLRenderer::showMenu()
     // 菜单按钮
     struct Btn { std::string text; float y; UserAction action; };
     Btn buttons[] = {
-        {"1. Start Game (Select Puzzle)", 210, UserAction::SELECT_PUZZLE_1},
+        {"1. Level Mode",                 210, UserAction::SELECT_PUZZLE_1},
         {"2. View Leaderboard",           270, UserAction::VIEW_LEADERBOARD},
         {"3. VS AI Battle",               330, UserAction::VS_AI_NORMAL},
         {"4. Exit",                       390, UserAction::QUIT}
@@ -560,6 +560,100 @@ void SFMLRenderer::showPuzzleList(const std::vector<Puzzle>& puzzles)
     _text->setString("Press 1-" + std::to_string(puzzles.size()) +
                     " to select, B to go back");
     centerText(*_text, 0, backY + 60, ww, 30);
+    _window.draw(*_text);
+
+    _window.display();
+}
+
+// ================================================================
+//  关卡列表界面（闯关模式）
+// ================================================================
+
+void SFMLRenderer::showLevelList(const std::vector<Puzzle>& puzzles,
+                                  int maxUnlocked,
+                                  const std::vector<int>& bestScores)
+{
+    _screen = UIScreen::LevelList;
+    _levelCount = static_cast<int>(puzzles.size());
+    _window.clear(sf::Color(215, 228, 245));
+
+    auto winSize = _window.getSize();
+    float ww = static_cast<float>(winSize.x);
+
+    _text->setCharacterSize(28);
+    _text->setFillColor(sf::Color(30, 70, 170));
+    _text->setString("Level Mode");
+    centerText(*_text, 0, 40, ww, 40);
+    _window.draw(*_text);
+
+    float startY = 110.0f;
+    for (int i = 0; i < _levelCount; ++i) {
+        int levelNum = i + 1;
+        float y = startY + i * 80.0f;
+        float bx = ww / 2.0f - 300.0f;
+
+        bool unlocked = levelNum <= maxUnlocked;
+        bool cleared = (bestScores[i] > 0);
+
+        // 关卡卡片背景
+        sf::Color cardColor = unlocked
+            ? (cleared ? sf::Color(230, 245, 230) : sf::Color::White)
+            : sf::Color(220, 220, 225);
+        _rect.setPosition(sf::Vector2f(bx, y));
+        _rect.setSize(sf::Vector2f(600, 66));
+        _rect.setFillColor(cardColor);
+        _rect.setOutlineColor(unlocked ? sf::Color(40, 120, 220) : sf::Color(160, 160, 170));
+        _rect.setOutlineThickness(unlocked ? 2.0f : 1.0f);
+        _window.draw(_rect);
+
+        // 关卡编号 + 名称
+        _text->setCharacterSize(18);
+        _text->setFillColor(unlocked ? sf::Color(20, 20, 40) : sf::Color(140, 140, 150));
+        std::string title;
+        if (!unlocked) {
+            title = std::to_string(levelNum) + ". [LOCKED]";
+        } else if (cleared) {
+            title = std::to_string(levelNum) + ". " + puzzles[i].name() + " [CLEAR]";
+        } else {
+            title = std::to_string(levelNum) + ". " + puzzles[i].name() + " [NEW]";
+        }
+        _text->setString(title);
+        _text->setPosition(sf::Vector2f(bx + 15, y + 8));
+        _window.draw(*_text);
+
+        // 盘面大小 + 最高分
+        _text->setCharacterSize(13);
+        _text->setFillColor(unlocked ? sf::Color(100, 100, 120) : sf::Color(170, 170, 180));
+        std::string info = std::to_string(puzzles[i].gridSize()) + "x" +
+                           std::to_string(puzzles[i].gridSize());
+        if (cleared) {
+            info += "  |  Best: " + std::to_string(bestScores[i]);
+        }
+        _text->setString(info);
+        _text->setPosition(sf::Vector2f(bx + 15, y + 36));
+        _window.draw(*_text);
+    }
+
+    // 返回按钮
+    float backY = startY + _levelCount * 80.0f + 20.0f;
+    float bx = ww / 2.0f - 120.0f;
+    _rect.setPosition(sf::Vector2f(bx, backY));
+    _rect.setSize(sf::Vector2f(240, 40));
+    _rect.setFillColor(sf::Color::White);
+    _rect.setOutlineColor(sf::Color(40, 120, 220));
+    _rect.setOutlineThickness(1.5f);
+    _window.draw(_rect);
+
+    _text->setCharacterSize(16);
+    _text->setFillColor(sf::Color(20, 20, 40));
+    _text->setString("B. Back to Menu");
+    centerText(*_text, bx, backY, 240, 40);
+    _window.draw(*_text);
+
+    _text->setCharacterSize(14);
+    _text->setFillColor(sf::Color(140, 140, 160));
+    _text->setString("Select a level to play  |  B to go back");
+    centerText(*_text, 0, backY + 55, ww, 30);
     _window.draw(*_text);
 
     _window.display();
@@ -1347,6 +1441,37 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
         if (inside(240.0f))  return UserAction::SELECT_PUZZLE_1;  // Normal
         if (inside(310.0f))  return UserAction::SELECT_PUZZLE_2;  // Advanced
         if (inside(380.0f))  return UserAction::SELECT_PUZZLE_3;  // Back
+        break;
+    }
+
+    case UIScreen::LevelList: {
+        float ww = static_cast<float>(_window.getSize().x);
+        float startY = 110.0f;
+
+        // 每个关卡卡片
+        for (int i = 0; i < _levelCount; ++i) {
+            float by = startY + i * 80.0f;
+            float bx = ww / 2.0f - 300.0f;
+            if (mx >= bx && mx <= bx + 600.0f &&
+                my >= by && my <= by + 66.0f) {
+                switch (i) {
+                    case 0: return UserAction::SELECT_PUZZLE_1;
+                    case 1: return UserAction::SELECT_PUZZLE_2;
+                    case 2: return UserAction::SELECT_PUZZLE_3;
+                    case 3: return UserAction::SELECT_PUZZLE_4;
+                    case 4: return UserAction::SELECT_PUZZLE_5;
+                    default: return UserAction::NONE;
+                }
+            }
+        }
+
+        // 返回按钮
+        float backY = startY + _levelCount * 80.0f + 20.0f;
+        float backBx = ww / 2.0f - 120.0f;
+        if (mx >= backBx && mx <= backBx + 240.0f &&
+            my >= backY && my <= backY + 40.0f) {
+            return UserAction::BACK;
+        }
         break;
     }
 

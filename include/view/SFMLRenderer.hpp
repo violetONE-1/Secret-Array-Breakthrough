@@ -29,7 +29,7 @@
 
 /** SFMLRenderer 内部界面标识 */
 enum class UIScreen { Menu, PuzzleList, Leaderboard, Result, Message,
-                      Gameplay, NamePrompt, StartSelect, VSAIMenu, VSResult };
+                      Gameplay, NamePrompt, StartSelect, VSAIMenu, VSResult, LevelList };
 
 class SFMLRenderer : public IRenderer {
 public:
@@ -41,6 +41,9 @@ public:
     void render(const GameState& state) override;
     void showMenu() override;
     void showPuzzleList(const std::vector<Puzzle>& puzzles) override;
+    void showLevelList(const std::vector<Puzzle>& puzzles,
+                       int maxUnlocked,
+                       const std::vector<int>& bestScores) override;
     void showLeaderboard(const std::vector<ScoreRecord>& records) override;
     void showResult(const ScoreRecord& record,
                     const std::vector<Move>& moveHistory) override;
@@ -137,6 +140,7 @@ private:
     UserAction _pendingAction;
     UIScreen   _screen;       // 当前显示的界面
     int        _puzzleCount;  // 题面列表项数（用于点击检测）
+    int        _levelCount;   // 关卡列表项数
     bool       _fullscreen;   // 是否全屏模式
     std::string _turnMessage; // 当前回合提示消息
 };

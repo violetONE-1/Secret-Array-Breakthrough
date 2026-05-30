@@ -26,6 +26,7 @@ GameController::GameController()
     , _cursorCol(0)
     , _gridRows(25)
     , _gridCols(25)
+    , _currentLevel(0)
     , _vsAI(false)
     , _aiDelayMs(300)
     , _aiStrategy(AIStrategy::RANDOM)
@@ -44,6 +45,10 @@ GameController::GameController()
     // 排行榜
     _leaderboard = std::make_unique<Leaderboard>(*_fileManager, "leaderboard.txt");
     _leaderboard->load();
+
+    // 关卡进度
+    _progress = std::make_unique<Progress>(*_fileManager, 3);
+    _progress->load();
 
     // 回放
     _replayBuffer = std::make_unique<ReplayBuffer>(*_fileManager);
@@ -124,7 +129,7 @@ void GameController::handleMenu()
         case UserAction::SELECT_PUZZLE_1:
         case UserAction::CONFIRM:
             _vsAI = false;
-            _phase = GamePhase::PUZZLE_SELECT;
+            handleLevelSelect();
             break;
 
         case UserAction::SELECT_PUZZLE_2:
@@ -155,6 +160,7 @@ void GameController::handleMenu()
 
 void GameController::handlePuzzleSelect()
 {
+    _currentLevel = 0;  // VS AI 模式不属于闯关
     const auto& puzzles = _puzzleManager->all();
 
     if (puzzles.empty()) {
@@ -259,6 +265,64 @@ void GameController::startNewGame(const Puzzle& puzzle)
                                   _gridRows, _gridCols,
                                   _player.name(),
                                   startsStr.str());
+}
+
+// ================================================================
+//  闯关模式
+// ================================================================
+
+void GameController::handleLevelSelect()
+{
+    const auto& puzzles = _puzzleManager->all();
+
+    if (puzzles.empty()) {
+        _renderer->showMessage("No levels available!");
+        _phase = GamePhase::MENU;
+        return;
+    }
+
+    // 收集最高分数据
+    int totalLevels = static_cast<int>(puzzles.size());
+    std::vector<int> bestScores(totalLevels, 0);
+    for (int i = 0; i < totalLevels; ++i) {
+        if (_progress->isUnlocked(i + 1)) {
+            bestScores[i] = _progress->bestScore(i + 1);
+        }
+    }
+
+    _renderer->showLevelList(puzzles, _progress->maxUnlocked(), bestScores);
+
+    UserAction action = _renderer->waitForAction();
+
+    int selectedIndex = -1;
+    switch (action) {
+        case UserAction::SELECT_PUZZLE_1: selectedIndex = 0; break;
+        case UserAction::SELECT_PUZZLE_2: selectedIndex = 1; break;
+        case UserAction::SELECT_PUZZLE_3: selectedIndex = 2; break;
+        case UserAction::SELECT_PUZZLE_4: selectedIndex = 3; break;
+        case UserAction::SELECT_PUZZLE_5: selectedIndex = 4; break;
+        case UserAction::BACK:
+        case UserAction::QUIT:
+            _phase = GamePhase::MENU;
+            return;
+        default:
+            return;  // 不做任何事，留在关卡列表
+    }
+
+    if (selectedIndex >= 0 && selectedIndex < totalLevels) {
+        int levelNum = selectedIndex + 1;
+
+        // 检查是否已解锁
+        if (!_progress->isUnlocked(levelNum)) {
+            _renderer->showMessage("This level is locked! Clear the previous level first.");
+            _phase = GamePhase::MENU;
+            return;
+        }
+
+        _player.setName(_renderer->promptPlayerName());
+        _currentLevel = levelNum;
+        startNewGame(puzzles[selectedIndex]);
+    }
 }
 
 // ================================================================
@@ -536,6 +600,14 @@ void GameController::submitAnswer()
     _replayBuffer->saveToFile(replayPath.str());
 
     _leaderboard->add(record);
+
+    // 闯关模式：更新关卡进度
+    if (_currentLevel > 0) {
+        _progress->updateLevel(_currentLevel, record.score());
+        _progress->save();
+        _currentLevel = 0;
+    }
+
     _renderer->showResult(record, _state->moveHistory());
 
     _state.reset();
