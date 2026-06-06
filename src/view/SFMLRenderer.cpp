@@ -68,6 +68,8 @@ SFMLRenderer::SFMLRenderer()
     if (_arrowCursor) _window.setMouseCursor(*_arrowCursor);
 
     _rect.setSize(sf::Vector2f(_cellSize - 2, _cellSize - 2));
+
+    _soundMgr.load();
 }
 
 SFMLRenderer::~SFMLRenderer()
@@ -1279,16 +1281,16 @@ UserAction SFMLRenderer::processKeyEvent(const sf::Event::KeyPressed& keyEvent)
 {
     switch (keyEvent.code) {
         case sf::Keyboard::Key::Up:
-            if (_cursorRow > 0) _cursorRow--;
-            return UserAction::NONE;  // 内化：不干扰 Controller
+            if (_cursorRow > 0) { _cursorRow--; _soundMgr.play(SoundManager::Click); }
+            return UserAction::NONE;
         case sf::Keyboard::Key::Down:
-            if (_cursorRow < _gridRows - 1) _cursorRow++;
+            if (_cursorRow < _gridRows - 1) { _cursorRow++; _soundMgr.play(SoundManager::Click); }
             return UserAction::NONE;
         case sf::Keyboard::Key::Left:
-            if (_cursorCol > 0) _cursorCol--;
+            if (_cursorCol > 0) { _cursorCol--; _soundMgr.play(SoundManager::Click); }
             return UserAction::NONE;
         case sf::Keyboard::Key::Right:
-            if (_cursorCol < _gridCols - 1) _cursorCol++;
+            if (_cursorCol < _gridCols - 1) { _cursorCol++; _soundMgr.play(SoundManager::Click); }
             return UserAction::NONE;
         case sf::Keyboard::Key::Enter: return UserAction::CONFIRM;
         case sf::Keyboard::Key::Space:
@@ -1397,10 +1399,10 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
             return mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
         };
 
-        if (inside(210.0f))      return UserAction::SELECT_PUZZLE_1;
-        if (inside(270.0f))      return UserAction::VIEW_LEADERBOARD;
-        if (inside(330.0f))      return UserAction::VS_AI_NORMAL;
-        if (inside(390.0f))      return UserAction::QUIT;
+        if (inside(210.0f))      { _soundMgr.play(SoundManager::Click); return UserAction::SELECT_PUZZLE_1; }
+        if (inside(270.0f))      { _soundMgr.play(SoundManager::Click); return UserAction::VIEW_LEADERBOARD; }
+        if (inside(330.0f))      { _soundMgr.play(SoundManager::Click); return UserAction::VS_AI_NORMAL; }
+        if (inside(390.0f))      { _soundMgr.play(SoundManager::Click); return UserAction::QUIT; }
         break;
     }
 
@@ -1415,6 +1417,7 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
             float by = startY + i * 70.0f;
             if (mx >= listBx && mx <= listBx + listBw &&
                 my >= by && my <= by + listBh) {
+                _soundMgr.play(SoundManager::Click);
                 switch (i) {
                     case 0: return UserAction::SELECT_PUZZLE_1;
                     case 1: return UserAction::SELECT_PUZZLE_2;
@@ -1431,6 +1434,7 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
         float backBx = ww / 2.0f - 120.0f;
         if (mx >= backBx && mx <= backBx + 240.0f &&
             my >= backY && my <= backY + 40.0f) {
+            _soundMgr.play(SoundManager::Click);
             return UserAction::BACK;
         }
         break;
@@ -1445,9 +1449,9 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
             return mx >= bx && mx <= bx + bw && my >= by && my <= by + bh;
         };
 
-        if (inside(240.0f))  return UserAction::SELECT_PUZZLE_1;  // Normal
-        if (inside(310.0f))  return UserAction::SELECT_PUZZLE_2;  // Advanced
-        if (inside(380.0f))  return UserAction::SELECT_PUZZLE_3;  // Back
+        if (inside(240.0f))  { _soundMgr.play(SoundManager::Click); return UserAction::SELECT_PUZZLE_1; }
+        if (inside(310.0f))  { _soundMgr.play(SoundManager::Click); return UserAction::SELECT_PUZZLE_2; }
+        if (inside(380.0f))  { _soundMgr.play(SoundManager::Click); return UserAction::SELECT_PUZZLE_3; }
         break;
     }
 
@@ -1461,6 +1465,7 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
             float bx = ww / 2.0f - 300.0f;
             if (mx >= bx && mx <= bx + 600.0f &&
                 my >= by && my <= by + 66.0f) {
+                _soundMgr.play(SoundManager::Click);
                 switch (i) {
                     case 0: return UserAction::SELECT_PUZZLE_1;
                     case 1: return UserAction::SELECT_PUZZLE_2;
@@ -1477,6 +1482,7 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
         float backBx = ww / 2.0f - 120.0f;
         if (mx >= backBx && mx <= backBx + 240.0f &&
             my >= backY && my <= backY + 40.0f) {
+            _soundMgr.play(SoundManager::Click);
             return UserAction::BACK;
         }
         break;
@@ -1501,6 +1507,16 @@ void SFMLRenderer::triggerMergeAnim(int row, int col)
     _animating = true;
     _animClock.restart();
 }
+
+// ================================================================
+//  音效
+// ================================================================
+
+void SFMLRenderer::playMergeSound()  { _soundMgr.play(SoundManager::Merge); }
+void SFMLRenderer::playErrorSound()  { _soundMgr.play(SoundManager::Error); }
+void SFMLRenderer::playClickSound()  { _soundMgr.play(SoundManager::Click); }
+void SFMLRenderer::playSubmitSound() { _soundMgr.play(SoundManager::Submit); }
+void SFMLRenderer::playResultSound() { _soundMgr.play(SoundManager::Result); }
 
 // ================================================================
 //  坐标转换

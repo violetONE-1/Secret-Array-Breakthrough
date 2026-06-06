@@ -32,9 +32,9 @@ target_include_directories(matrix_breakthrough PRIVATE
 
 # ---- SFML linkage (only when ENABLE_GUI=ON) ----
 if(ENABLE_GUI)
-    find_package(SFML COMPONENTS Graphics Window System REQUIRED)
+    find_package(SFML COMPONENTS Graphics Window System Audio REQUIRED)
     target_link_libraries(matrix_breakthrough PRIVATE
-        SFML::Graphics SFML::Window SFML::System
+        SFML::Graphics SFML::Window SFML::System SFML::Audio
     )
     target_compile_definitions(matrix_breakthrough PRIVATE HAS_GUI)
 endif()

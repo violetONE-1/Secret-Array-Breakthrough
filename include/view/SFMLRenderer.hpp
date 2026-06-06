@@ -19,6 +19,7 @@
 #ifdef HAS_GUI
 
 #include "view/IRenderer.hpp"
+#include "view/SoundManager.hpp"
 #include <SFML/Graphics.hpp>
 #include <set>
 #include <vector>
@@ -67,6 +68,14 @@ public:
     // ---- 动画触发（由 Controller 在合并后调用） ----
 
     void triggerMergeAnim(int row, int col);
+
+    // ---- 音效触发 ----
+
+    void playMergeSound();
+    void playErrorSound();
+    void playClickSound();
+    void playSubmitSound();
+    void playResultSound();
 
     // ---- 全屏切换 ----
 
@@ -143,6 +152,8 @@ private:
     int        _levelCount;   // 关卡列表项数
     bool       _fullscreen;   // 是否全屏模式
     std::string _turnMessage; // 当前回合提示消息
+
+    SoundManager _soundMgr;   // 音效管理器
 };
 
 #endif // HAS_GUI

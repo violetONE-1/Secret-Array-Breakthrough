@@ -330,6 +330,12 @@ void GameController::handleLevelSelect()
 
         // 检查是否已解锁
         if (!_progress->isUnlocked(levelNum)) {
+#ifdef HAS_GUI
+            {
+                auto* sfml = dynamic_cast<SFMLRenderer*>(_renderer.get());
+                if (sfml) sfml->playErrorSound();
+            }
+#endif
             _renderer->showMessage("This level is locked! Clear the previous level first.");
             _phase = GamePhase::MENU;
             return;
@@ -544,10 +550,13 @@ bool GameController::tryMerge(int srcRow, int srcCol, int dstRow, int dstCol)
     _cursorRow = dstRow;
     _cursorCol = dstCol;
 
-    // 触发合并动画
+    // 触发合并动画 + 音效
 #ifdef HAS_GUI
     auto* sfml = dynamic_cast<SFMLRenderer*>(_renderer.get());
-    if (sfml) sfml->triggerMergeAnim(dstRow, dstCol);
+    if (sfml) {
+        sfml->triggerMergeAnim(dstRow, dstCol);
+        sfml->playMergeSound();
+    }
 #endif
 
     return true;
@@ -593,6 +602,11 @@ void GameController::submitAnswer()
 {
     if (!_state) return;
 
+#ifdef HAS_GUI
+    auto* sfml = dynamic_cast<SFMLRenderer*>(_renderer.get());
+    if (sfml) sfml->playSubmitSound();
+#endif
+
     _replayBuffer->stopRecording();
 
     auto now = std::time(nullptr);
@@ -636,6 +650,12 @@ void GameController::submitAnswer()
             _progress->updateLevel(level, record.score());
             _progress->save();
         } else {
+#ifdef HAS_GUI
+            {
+                auto* sfml = dynamic_cast<SFMLRenderer*>(_renderer.get());
+                if (sfml) sfml->playErrorSound();
+            }
+#endif
             std::ostringstream msg;
             msg << "Level " << level << " not passed! Score: " << record.score()
                 << " / Threshold: " << scoreThresholds[level];
@@ -643,6 +663,13 @@ void GameController::submitAnswer()
         }
         _currentLevel = 0;
     }
+
+#ifdef HAS_GUI
+    {
+        auto* sfml = dynamic_cast<SFMLRenderer*>(_renderer.get());
+        if (sfml) sfml->playResultSound();
+    }
+#endif
 
     _renderer->showResult(record, _state->moveHistory());
 
@@ -1050,6 +1077,13 @@ void GameController::finishVSAI()
     // Query VS AI match history
     std::vector<ScoreRecord> vsHistory = _leaderboard->recordsForPuzzle("vs_ai");
 
+#ifdef HAS_GUI
+    {
+        auto* sfml = dynamic_cast<SFMLRenderer*>(_renderer.get());
+        if (sfml) sfml->playResultSound();
+    }
+#endif
+
     _renderer->showVSResult(playerRecord, aiRecord, winner);
     _renderer->waitForAction();
 
@@ -1116,7 +1150,10 @@ bool GameController::doAIMerge(CellOwner owner, int srcRow, int srcCol, int dstR
 
 #ifdef HAS_GUI
     auto* sfml = dynamic_cast<SFMLRenderer*>(_renderer.get());
-    if (sfml) sfml->triggerMergeAnim(dstRow, dstCol);
+    if (sfml) {
+        sfml->triggerMergeAnim(dstRow, dstCol);
+        sfml->playMergeSound();
+    }
 #endif
 
     return true;
