@@ -84,8 +84,6 @@ void PuzzleManager::createBuiltinPuzzles()
     }
 
     // 首次运行：生成并保存题面
-    std::srand(42);  // 固定种子，保证每次生成相同题面
-
     const char* names[] = {
         "Beginner Training",
         "Advanced Challenge",
@@ -96,6 +94,8 @@ void PuzzleManager::createBuiltinPuzzles()
     std::string allStartsStr = "0,0 3,3 6,10 12,15 20,20";  // 默认起点
 
     for (int pid = 0; pid < 3; ++pid) {
+        std::srand(42 + pid * 1000);  // 固定种子，每道题不同
+
         Grid grid(N, N);
 
         // 随机填充字母 (A~Z) 和数字 (0~9)
@@ -107,34 +107,55 @@ void PuzzleManager::createBuiltinPuzzles()
             }
         }
 
-        // 确保至少存在一些合法合并操作（随机放置一些易合并的格对）
-        // 在 5 个位置放置同字母不同数字的相邻格对
-        for (int i = 0; i < 5; ++i) {
-            int r = std::rand() % (N - 1);
-            int c = std::rand() % N;
-            char letter = static_cast<char>('A' + (std::rand() % 26));
-            int n1 = std::rand() % 10;
-            int n2 = std::rand() % 10;
-            if (n1 == n2) n2 = (n2 + 1) % 10;  // 确保数字不同
-            grid.setAt(r, c, Cell(letter, n1));
-            grid.setAt(r + 1, c, Cell(letter, n2));
+        // Connectivity pass: ensure every cell has at least one mergeable neighbor,
+        // so the board is playable from any starting position
+        static const int dirs[4][2] = {{-1,0},{1,0},{0,-1},{0,1}};
+        for (int r = 0; r < N; ++r) {
+            for (int c = 0; c < N; ++c) {
+                // Check if any neighbor can already merge with this cell
+                bool hasMergeable = false;
+                for (int d = 0; d < 4; ++d) {
+                    int nr = r + dirs[d][0];
+                    int nc = c + dirs[d][1];
+                    if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+                    if (MergeRule::canMerge(grid.at(r, c), grid.at(nr, nc))) {
+                        hasMergeable = true;
+                        break;
+                    }
+                }
+                if (hasMergeable) continue;
+
+                // Pick a random neighbor and make this cell mergeable with it
+                int candR[4], candC[4];
+                int nCount = 0;
+                for (int d = 0; d < 4; ++d) {
+                    int nr = r + dirs[d][0];
+                    int nc = c + dirs[d][1];
+                    if (nr < 0 || nr >= N || nc < 0 || nc >= N) continue;
+                    candR[nCount] = nr;
+                    candC[nCount] = nc;
+                    ++nCount;
+                }
+                if (nCount == 0) continue;
+
+                int pick = std::rand() % nCount;
+                const Cell& neighbor = grid.at(candR[pick], candC[pick]);
+
+                if (std::rand() % 2 == 0) {
+                    // Same letter, different number
+                    int newNum = (neighbor.getNumber() + 1 + (std::rand() % 9)) % 10;
+                    grid.setAt(r, c, Cell(neighbor.getLetter(), newNum));
+                } else {
+                    // Same number, different letter
+                    char base = neighbor.getLetter();
+                    char newLetter = static_cast<char>('A' + ((base - 'A' + 1 + (std::rand() % 25)) % 26));
+                    grid.setAt(r, c, Cell(newLetter, neighbor.getNumber()));
+                }
+            }
         }
 
-        // 再放置 5 个同数字不同字母的相邻格对
-        for (int i = 0; i < 5; ++i) {
-            int r = std::rand() % N;
-            int c = std::rand() % (N - 1);
-            int number = std::rand() % 10;
-            char l1 = static_cast<char>('A' + (std::rand() % 26));
-            char l2 = static_cast<char>('A' + (std::rand() % 26));
-            if (l1 == l2) l2 = static_cast<char>('A' + ((l2 - 'A' + 1) % 26));
-            grid.setAt(r, c, Cell(l1, number));
-            grid.setAt(r, c + 1, Cell(l2, number));
-        }
-
-        // 确保至少有一个合法操作存在
+        // Safety guard: ensure at least one valid move exists
         if (!grid.hasAnyValidMove()) {
-            // 兜底：在 (0,0) 和 (0,1) 处放置可合并格对
             grid.setAt(0, 0, Cell('A', 1));
             grid.setAt(0, 1, Cell('A', 2));
         }
@@ -150,9 +171,6 @@ void PuzzleManager::createBuiltinPuzzles()
 
         // 添加到内存
         _puzzles.push_back(puzzle);
-
-        // 改变种子以产生不同的题面
-        std::srand(42 + pid * 1000);
     }
 }
 

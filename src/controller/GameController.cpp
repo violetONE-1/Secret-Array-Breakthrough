@@ -615,16 +615,48 @@ void GameController::submitAnswer()
                << ".txt";
     _replayBuffer->saveToFile(replayPath.str());
 
+    // Query personal best before adding current record
+    std::vector<ScoreRecord> history = _leaderboard->recordsForPuzzle(_state->puzzleId());
+    bool hasPrevious = false;
+    int bestBefore = 0;
+    for (const auto& r : history) {
+        if (r.playerName() == _player.name()) {
+            hasPrevious = true;
+            if (r.score() > bestBefore) bestBefore = r.score();
+        }
+    }
+
     _leaderboard->add(record);
 
     // 闯关模式：更新关卡进度
     if (_currentLevel > 0) {
-        _progress->updateLevel(_currentLevel, record.score());
-        _progress->save();
+        static const int scoreThresholds[] = {0, 10, 300, 600};
+        int level = _currentLevel;
+        if (record.score() >= scoreThresholds[level]) {
+            _progress->updateLevel(level, record.score());
+            _progress->save();
+        } else {
+            std::ostringstream msg;
+            msg << "Level " << level << " not passed! Score: " << record.score()
+                << " / Threshold: " << scoreThresholds[level];
+            _renderer->showMessage(msg.str());
+        }
         _currentLevel = 0;
     }
 
     _renderer->showResult(record, _state->moveHistory());
+
+    if (hasPrevious) {
+        std::ostringstream pbMsg;
+        if (record.score() > bestBefore) {
+            pbMsg << "New Personal Best: " << record.score()
+                  << " (was: " << bestBefore << ")!";
+        } else {
+            pbMsg << "Score: " << record.score()
+                  << " | Personal Best: " << bestBefore;
+        }
+        _renderer->showMessage(pbMsg.str());
+    }
 
     _state.reset();
     _phase = GamePhase::MENU;
@@ -983,22 +1015,49 @@ void GameController::finishVSAI()
 
     // 判定胜负
     std::string winner;
+    std::string resultTag;
     if (playerRecord.score() > aiRecord.score()) {
         winner = "player";
+        resultTag = " (Win)";
     } else if (playerRecord.score() < aiRecord.score()) {
         winner = "ai";
+        resultTag = " (Loss)";
     } else {
         if (playerRecord.steps() > aiRecord.steps()) {
             winner = "player";
+            resultTag = " (Win)";
         } else if (playerRecord.steps() < aiRecord.steps()) {
             winner = "ai";
+            resultTag = " (Loss)";
         } else {
             winner = "draw";
+            resultTag = " (Draw)";
         }
     }
 
+    // Save to VS AI leaderboard
+    ScoreRecord lbRecord(
+        _player.name() + resultTag,
+        "vs_ai",
+        _state->elapsedSeconds(),
+        _state->stepsTakenBy(CellOwner::Player),
+        _state->accuracyBy(CellOwner::Player),
+        timestamp.str()
+    );
+    lbRecord.setScore(playerRecord.score());
+    _leaderboard->add(lbRecord);
+
+    // Query VS AI match history
+    std::vector<ScoreRecord> vsHistory = _leaderboard->recordsForPuzzle("vs_ai");
+
     _renderer->showVSResult(playerRecord, aiRecord, winner);
     _renderer->waitForAction();
+
+    // Show match history
+    if (vsHistory.size() > 1) {
+        _renderer->showLeaderboard(vsHistory);
+        _renderer->waitForAction();
+    }
 
     _state.reset();
     _phase = GamePhase::MENU;

@@ -36,9 +36,15 @@ SFMLRenderer::SFMLRenderer()
     _window.setVerticalSyncEnabled(true);
 
     // 加载字体：优先使用项目自带字体，否则回退到系统字体
+    // 注意：Windows 字体目录中的文件名可能有空格，需要用完整路径
     std::string fontPaths[] = {
         "assets/fonts/NotoSansSC-Regular.ttf",
+        "assets/fonts/NotoSansSC-Regular.otf",
         "C:/Windows/Fonts/msyh.ttc",
+        "C:/Windows/Fonts/Noto Sans SC (TrueType).otf",
+        "C:/Windows/Fonts/NotoSansSC-VF.ttf",
+        "C:/Windows/Fonts/simsun.ttc",
+        "C:/Windows/Fonts/simhei.ttf",
         "C:/Windows/Fonts/consola.ttf",
         "C:/Windows/Fonts/arial.ttf"
     };
@@ -135,6 +141,7 @@ void SFMLRenderer::render(const GameState& state)
         int alpha = static_cast<int>(255 * (1.0f - t));
         sf::Vector2f pos = gridToPixel(_animRow, _animCol);
         _rect.setPosition(pos);
+        _rect.setSize(sf::Vector2f(_cellSize - 2, _cellSize - 2));
         _rect.setFillColor(sf::Color(255, 200, 50, alpha));
         _rect.setOutlineThickness(0);
         _window.draw(_rect);
