@@ -17,11 +17,8 @@ GameState::GameState(const Grid& initialGrid,
     , _puzzleId(puzzleId)
     , _playerStarts(playerStarts)
     , _stepsTaken(0)
-    , _slideCount(0)
     , _playerSteps(0)
     , _aiSteps(0)
-    , _playerSlideCount(0)
-    , _aiSlideCount(0)
     , _timerStarted(false)
     , _gameOver(false)
 {
@@ -134,11 +131,6 @@ void GameState::recordMove(const Move& move, CellOwner owner)
     _moveHistory.push_back(move);
     _moveOwners.push_back(owner);
     ++_stepsTaken;
-    if (move.moveType == MoveType::SLIDE) {
-        ++_slideCount;
-        if (owner == CellOwner::Player) ++_playerSlideCount;
-        else ++_aiSlideCount;
-    }
     if (owner == CellOwner::Player) ++_playerSteps;
     else ++_aiSteps;
 }
@@ -153,15 +145,6 @@ int GameState::stepsTakenBy(CellOwner owner) const
     if (owner == CellOwner::Player) return _playerSteps;
     if (owner == CellOwner::AI)     return _aiSteps;
     return _stepsTaken;
-}
-
-double GameState::accuracyBy(CellOwner owner) const
-{
-    int stepCount = (owner == CellOwner::Player) ? _playerSteps : _aiSteps;
-    int slideCount = (owner == CellOwner::Player) ? _playerSlideCount : _aiSlideCount;
-    int mergeCount = stepCount - slideCount;
-    if (mergeCount <= 0) return 0.0;
-    return 1.0;
 }
 
 int GameState::stepsTaken() const
@@ -223,6 +206,8 @@ bool GameState::hasValidMoves(CellOwner owner) const
                         q.push(next);
                     }
                 } else {
+                    // 跳过起始格——滑走之后它已变成空格，不能作为合并目标
+                    if (nr == r && nc == c) continue;
                     // 非空格：检查棋子内容是否可与之合并
                     if (MergeRule::canMerge(piece, neighbor)) {
                         return true;

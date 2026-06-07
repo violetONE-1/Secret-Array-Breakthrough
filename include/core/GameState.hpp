@@ -105,9 +105,6 @@ public:
     /** 返回某一方的总步数 */
     int stepsTakenBy(CellOwner owner) const;
 
-    /** 返回某一方的正确率 */
-    double accuracyBy(CellOwner owner) const;
-
     /** 返回本局总步数（合并 + 滑行） */
     int stepsTaken() const;
 
@@ -137,11 +134,8 @@ private:
     std::set<std::pair<int, int>>       _playerCells;
     std::set<std::pair<int, int>>       _aiCells;
     int                                 _stepsTaken;
-    int                                 _slideCount;
     int                                 _playerSteps;
     int                                 _aiSteps;
-    int                                 _playerSlideCount;
-    int                                 _aiSlideCount;
     std::vector<Move>                   _moveHistory;
     std::vector<CellOwner>              _moveOwners;
     std::chrono::steady_clock::time_point _startTime;

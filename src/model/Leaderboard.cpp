@@ -78,19 +78,6 @@ std::vector<ScoreRecord> Leaderboard::topByTime(int n) const
     return sorted;
 }
 
-std::vector<ScoreRecord> Leaderboard::topByAccuracy(int n) const
-{
-    auto sorted = _records;
-    std::sort(sorted.begin(), sorted.end(),
-              [](const ScoreRecord& a, const ScoreRecord& b) {
-                  return a.accuracy() > b.accuracy();  // 降序
-              });
-    if (n > 0 && n < static_cast<int>(sorted.size())) {
-        sorted.resize(n);
-    }
-    return sorted;
-}
-
 std::vector<ScoreRecord> Leaderboard::recordsForPuzzle(const std::string& puzzleId) const
 {
     std::vector<ScoreRecord> result;

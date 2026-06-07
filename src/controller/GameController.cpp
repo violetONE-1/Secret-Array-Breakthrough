@@ -618,7 +618,6 @@ void GameController::submitAnswer()
         _state->puzzleId(),
         _state->elapsedSeconds(),
         _state->stepsTakenBy(CellOwner::Player),
-        _state->accuracyBy(CellOwner::Player),
         timestamp.str()
     );
 
@@ -1018,7 +1017,6 @@ void GameController::finishVSAI()
         _state->puzzleId(),
         _state->elapsedSeconds(),
         _state->stepsTakenBy(CellOwner::Player),
-        _state->accuracyBy(CellOwner::Player),
         timestamp.str()
     );
 
@@ -1028,7 +1026,6 @@ void GameController::finishVSAI()
         _state->puzzleId(),
         _state->elapsedSeconds(),
         _state->stepsTakenBy(CellOwner::AI),
-        _state->accuracyBy(CellOwner::AI),
         timestamp.str()
     );
 
@@ -1068,7 +1065,6 @@ void GameController::finishVSAI()
         "vs_ai",
         _state->elapsedSeconds(),
         _state->stepsTakenBy(CellOwner::Player),
-        _state->accuracyBy(CellOwner::Player),
         timestamp.str()
     );
     lbRecord.setScore(playerRecord.score());

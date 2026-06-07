@@ -46,9 +46,6 @@ public:
     /** 按用时升序，取前 n 名 */
     std::vector<ScoreRecord> topByTime(int n = 0) const;
 
-    /** 按正确率降序，取前 n 名 */
-    std::vector<ScoreRecord> topByAccuracy(int n = 0) const;
-
     /** 筛选特定题面的记录 */
     std::vector<ScoreRecord> recordsForPuzzle(const std::string& puzzleId) const;
 

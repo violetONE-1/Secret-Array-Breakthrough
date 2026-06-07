@@ -18,6 +18,12 @@
 |------|------|----------|
 | 双击 exe 音效不工作 | Windows 将工作目录设为 exe 所在目录（`build/Debug/`），相对路径 `assets/sounds/` 解析失败 | 在项目根目录建 `run.bat`，先 `cd` 到项目根目录再启动 exe；或后续在代码中用 `GetModuleFileNameW` 获取 exe 绝对路径来定位资源 |
 
+## 最近完成的工作
+
+| 任务 | 改动文件 | 说明 |
+|------|---------|------|
+| 删除准确率指标 | `ScoreRecord` / `GameState` / `Leaderboard` / `GameController` / `ConsoleRenderer` / `SFMLRenderer` | `accuracyBy()` 和 `accuracy()` 已移除；得分公式改为 `max(0,500-time×2) + steps×10`；序列化仍写 `0.00` 保持旧文件兼容；排行榜按准确率排序的 `topByAccuracy` 已删除 |
+
 ## 已实现功能总览
 
 | 功能模块 | 状态 |

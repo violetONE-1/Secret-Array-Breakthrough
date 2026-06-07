@@ -688,8 +688,8 @@ void SFMLRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)
 
     // 表头
     float headerY = 80.0f;
-    float colX[] = {40.0f, 80.0f, 340.0f, 470.0f, 560.0f, 650.0f, 750.0f};
-    const char* headers[] = {"#", "Player", "Puzzle", "Time(s)", "Steps", "Acc%", "Score"};
+    float colX[] = {40.0f, 80.0f, 340.0f, 470.0f, 560.0f, 680.0f};
+    const char* headers[] = {"#", "Player", "Puzzle", "Time(s)", "Steps", "Score"};
     _text->setCharacterSize(14);
     _text->setFillColor(sf::Color(60, 60, 80));
     for (int i = 0; i < 7; ++i) {
@@ -737,15 +737,9 @@ void SFMLRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)
         _text->setPosition(sf::Vector2f(colX[4], rowY));
         _window.draw(*_text);
 
-        std::ostringstream as;
-        as << std::fixed << std::setprecision(0) << (r.accuracy() * 100);
-        _text->setString(as.str());
-        _text->setPosition(sf::Vector2f(colX[5], rowY));
-        _window.draw(*_text);
-
         _text->setFillColor(sf::Color(200, 130, 20));
         _text->setString(std::to_string(r.score()));
-        _text->setPosition(sf::Vector2f(colX[6], rowY));
+        _text->setPosition(sf::Vector2f(colX[5], rowY));
         _window.draw(*_text);
 
         rowY += 24.0f;
@@ -849,12 +843,6 @@ void SFMLRenderer::showResult(const ScoreRecord& record,
             drawStat("Time:", ts.str());
         }
         drawStat("Steps:", std::to_string(record.steps()));
-        {
-            std::ostringstream as;
-            as << std::fixed << std::setprecision(0)
-               << (record.accuracy() * 100) << "%";
-            drawStat("Accuracy:", as.str());
-        }
         drawStat("Score:", std::to_string(record.score()), sf::Color(200, 130, 20));
 
         // ---- 右侧：操作历史面板 ----

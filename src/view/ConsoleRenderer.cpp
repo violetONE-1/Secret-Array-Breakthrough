@@ -307,7 +307,7 @@ void ConsoleRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)
     std::cout << "  +--------------------------------------------------+\n";
     std::cout << "  |               Leaderboard                        |\n";
     std::cout << "  +--------------------------------------------------+\n";
-    std::cout << "  | #  Player             Time(s)  Steps  Acc   Score|\n";
+    std::cout << "  | #  Player             Time(s)  Steps   Score|\n";
     std::cout << "  +--------------------------------------------------+\n";
     setColor(7);
 
@@ -317,7 +317,6 @@ void ConsoleRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)
                   << std::setw(20) << std::left << r.playerName().substr(0, 19)
                   << std::setw(9) << std::fixed << std::setprecision(2) << r.timeSeconds()
                   << std::setw(7) << r.steps()
-                  << std::setw(6) << std::fixed << std::setprecision(2) << r.accuracy()
                   << std::setw(6) << r.score() << "|\n";
     }
 
@@ -344,8 +343,6 @@ void ConsoleRenderer::showResult(const ScoreRecord& record,
     std::cout << "  |  Time:     " << std::setw(26) << std::left
               << (std::to_string(static_cast<int>(record.timeSeconds())) + " s") << "|\n";
     std::cout << "  |  Steps:    " << std::setw(26) << record.steps()      << "|\n";
-    std::cout << "  |  Accuracy: " << std::setw(26) << std::left
-              << (std::to_string(static_cast<int>(record.accuracy() * 100)) + "%") << "|\n";
     std::cout << "  |  Score:    " << std::setw(26) << record.score()      << "|\n";
     std::cout << "  +--------------------------------------+\n";
 
@@ -417,14 +414,6 @@ void ConsoleRenderer::showVSResult(const ScoreRecord& playerRecord,
     printLine("Steps:",
               std::to_string(playerRecord.steps()),
               std::to_string(aiRecord.steps()));
-    {
-        std::ostringstream pa, aa;
-        pa << std::fixed << std::setprecision(0)
-           << (playerRecord.accuracy() * 100) << "%";
-        aa << std::fixed << std::setprecision(0)
-           << (aiRecord.accuracy() * 100) << "%";
-        printLine("Accuracy:", pa.str(), aa.str());
-    }
     setColor(14);
     printLine("Score:",
               std::to_string(playerRecord.score()),

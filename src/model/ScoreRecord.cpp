@@ -8,7 +8,7 @@
 #include <cmath>
 
 ScoreRecord::ScoreRecord()
-    : _timeSeconds(0), _steps(0), _accuracy(0), _score(0)
+    : _timeSeconds(0), _steps(0), _score(0)
 {
 }
 
@@ -16,16 +16,14 @@ ScoreRecord::ScoreRecord(const std::string& playerName,
                          const std::string& puzzleId,
                          double timeSeconds,
                          int    steps,
-                         double accuracy,
                          const std::string& timestamp)
     : _playerName(playerName)
     , _puzzleId(puzzleId)
     , _timeSeconds(timeSeconds)
     , _steps(steps)
-    , _accuracy(accuracy)
     , _timestamp(timestamp)
 {
-    _score = calculateScore(timeSeconds, steps, accuracy);
+    _score = calculateScore(timeSeconds, steps);
 }
 
 // ---- Getters ----
@@ -34,7 +32,6 @@ const std::string& ScoreRecord::playerName()  const { return _playerName; }
 const std::string& ScoreRecord::puzzleId()    const { return _puzzleId; }
 double             ScoreRecord::timeSeconds() const { return _timeSeconds; }
 int                ScoreRecord::steps()       const { return _steps; }
-double             ScoreRecord::accuracy()    const { return _accuracy; }
 int                ScoreRecord::score()       const { return _score; }
 const std::string& ScoreRecord::timestamp()   const { return _timestamp; }
 
@@ -42,10 +39,10 @@ void ScoreRecord::setScore(int score) { _score = score; }
 
 // ---- 得分计算 ----
 
-int ScoreRecord::calculateScore(double timeSeconds, int steps, double accuracy)
+int ScoreRecord::calculateScore(double timeSeconds, int steps)
 {
-    // 公式：accuracy × 1000 + max(0, 500 − time × 2) + steps × 10
-    int score = static_cast<int>(std::round(accuracy * 1000.0));
+    // 公式：max(0, 500 − time × 2) + steps × 10
+    int score = 0;
     int timeBonus = 500 - static_cast<int>(timeSeconds * 2.0);
     if (timeBonus < 0) timeBonus = 0;
     score += timeBonus;
@@ -62,7 +59,7 @@ std::string ScoreRecord::serialize() const
         << _puzzleId << ", "
         << std::fixed << std::setprecision(2) << _timeSeconds << ", "
         << _steps << ", "
-        << std::fixed << std::setprecision(2) << _accuracy << ", "
+        << "0.00, "
         << _score << ", "
         << _timestamp;
     return oss.str();
@@ -82,6 +79,8 @@ bool ScoreRecord::deserialize(const std::string& line, ScoreRecord& outRecord)
 
     if (!(iss >> timeSeconds)) return false; iss.ignore(1);
     if (!(iss >> steps)) return false; iss.ignore(1);
+
+    // 跳过准确率字段（保留以兼容旧文件）
     if (!(iss >> accuracy)) return false; iss.ignore(1);
 
     int score;
@@ -89,7 +88,6 @@ bool ScoreRecord::deserialize(const std::string& line, ScoreRecord& outRecord)
 
     std::getline(iss, timestamp); // 剩余部分为时间戳
 
-    outRecord = ScoreRecord(playerName, puzzleId, timeSeconds,
-                            steps, accuracy, timestamp);
+    outRecord = ScoreRecord(playerName, puzzleId, timeSeconds, steps, timestamp);
     return true;
 }
