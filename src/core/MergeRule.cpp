@@ -20,7 +20,10 @@ bool MergeRule::canMerge(const Cell& a, const Cell& b)
     // 条件 2：数字相同 & 字母不同 → 可合并
     if (sameN && !sameL) return true;
 
-    // 其余情况（字母数字全同、字母数字全不同）均不可合并
+    // 条件 3：字母数字都相同 → 可合并（合并后结果不变，仍为原格子）
+    if (sameL && sameN) return true;
+
+    // 其余情况（字母数字全不同）不可合并
     return false;
 }
 
