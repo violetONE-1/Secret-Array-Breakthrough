@@ -1,0 +1,18 @@
+# 密阵突围 回放记录
+[Puzzle] builtin_01
+[Grid] 25 25
+[Player] a
+[Starts] 0,0 12,12 0,24 24,0 24,24
+[Start] 2026-06-07 10:32:46
+[End] 2026-06-07 10:33:05
+[TotalSteps] 9
+# 操作序列：序号 源坐标 -> 目标坐标 方向 结果
+[Move] 001 0,0 -> 1,0 DOWN G4
+[Move] 002 0,24 -> 1,24 DOWN Z8
+[Move] 003 12,12 -> 12,13 RIGHT P5
+[Slide] 004 12,13 -> 12,12 LEFT P5
+[Slide] 005 12,12 -> 12,13 RIGHT P5
+[Slide] 006 12,13 -> 12,12 LEFT P5
+[Move] 007 12,12 -> 11,12 UP X5
+[Move] 008 24,24 -> 23,24 UP R8
+[Move] 009 24,0 -> 23,0 UP R2
