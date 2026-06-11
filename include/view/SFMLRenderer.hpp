@@ -67,7 +67,8 @@ public:
 
     // ---- 动画触发（由 Controller 在合并后调用） ----
 
-    void triggerMergeAnim(int row, int col);
+    void triggerMergeAnim(int srcRow, int srcCol, char srcLetter, int srcNum,
+                          int dstRow, int dstCol, char resultLetter, int resultNum);
 
     // ---- 音效触发 ----
 
@@ -140,9 +141,17 @@ private:
     bool _hasSelection;
 
     // 动画
-    sf::Clock _animClock;
-    int  _animRow, _animCol;
-    bool _animating;
+    struct AnimState {
+        bool active = false;
+        sf::Clock clock;
+        int srcRow = -1, srcCol = -1;
+        char srcLetter = ' ';
+        int srcNum = 0;
+        int dstRow = -1, dstCol = -1;
+        char resultLetter = ' ';
+        int resultNum = 0;
+        float duration = 320.0f;
+    } _anim;
 
     // 杂项
     const GameState* _lastState = nullptr;  // 最近一次 render() 的状态（供 waitForAction 内重绘）

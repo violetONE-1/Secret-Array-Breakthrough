@@ -520,6 +520,10 @@ bool GameController::tryMerge(int srcRow, int srcCol, int dstRow, int dstCol)
 
     if (!MergeRule::canMerge(source, target)) return false;
 
+    // 保存源格内容（mergeCells 后 source 会被置空，但动画需要合并前的值）
+    char savedSrcLetter = source.getLetter();
+    int  savedSrcNum = source.getNumber();
+
     Cell result = MergeRule::getMergedCell(source, target);
 
     Direction dir;
@@ -554,7 +558,8 @@ bool GameController::tryMerge(int srcRow, int srcCol, int dstRow, int dstCol)
 #ifdef HAS_GUI
     auto* sfml = dynamic_cast<SFMLRenderer*>(_renderer.get());
     if (sfml) {
-        sfml->triggerMergeAnim(dstRow, dstCol);
+        sfml->triggerMergeAnim(srcRow, srcCol, savedSrcLetter, savedSrcNum,
+                               dstRow, dstCol, result.getLetter(), result.getNumber());
         sfml->playMergeSound();
     }
 #endif
@@ -1119,6 +1124,10 @@ bool GameController::doAIMerge(CellOwner owner, int srcRow, int srcCol, int dstR
     if (target.isEmpty()) return false;
     if (!MergeRule::canMerge(source, target)) return false;
 
+    // 保存源格内容（mergeCells 后 source 会被置空，但动画需要合并前的值）
+    char savedSrcLetter = source.getLetter();
+    int  savedSrcNum = source.getNumber();
+
     Cell result = MergeRule::getMergedCell(source, target);
 
     Direction dir;
@@ -1147,7 +1156,8 @@ bool GameController::doAIMerge(CellOwner owner, int srcRow, int srcCol, int dstR
 #ifdef HAS_GUI
     auto* sfml = dynamic_cast<SFMLRenderer*>(_renderer.get());
     if (sfml) {
-        sfml->triggerMergeAnim(dstRow, dstCol);
+        sfml->triggerMergeAnim(srcRow, srcCol, savedSrcLetter, savedSrcNum,
+                               dstRow, dstCol, result.getLetter(), result.getNumber());
         sfml->playMergeSound();
     }
 #endif

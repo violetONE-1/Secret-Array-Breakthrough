@@ -26,8 +26,6 @@ SFMLRenderer::SFMLRenderer()
     , _gridRows(25), _gridCols(25)
     , _selectedRow(-1), _selectedCol(-1)
     , _hasSelection(false)
-    , _animRow(-1), _animCol(-1)
-    , _animating(false)
     , _pendingAction(UserAction::NONE)
     , _screen(UIScreen::Menu)
     , _puzzleCount(0)
@@ -137,18 +135,70 @@ void SFMLRenderer::render(const GameState& state)
     drawGrid(state);
     drawInfoPanel(state);
 
-    // 合并动画
-    if (_animating && _animClock.getElapsedTime().asMilliseconds() < 300) {
-        float t = _animClock.getElapsedTime().asMilliseconds() / 300.0f;
-        int alpha = static_cast<int>(255 * (1.0f - t));
-        sf::Vector2f pos = gridToPixel(_animRow, _animCol);
-        _rect.setPosition(pos);
-        _rect.setSize(sf::Vector2f(_cellSize - 2, _cellSize - 2));
-        _rect.setFillColor(sf::Color(255, 200, 50, alpha));
-        _rect.setOutlineThickness(0);
-        _window.draw(_rect);
-    } else {
-        _animating = false;
+    // 合并动画：源格棋子飞向目标格 + 目标格弹跳
+    if (_anim.active) {
+        float elapsed = _anim.clock.getElapsedTime().asMilliseconds();
+        if (elapsed < _anim.duration) {
+            float t = elapsed / _anim.duration;
+            sf::Vector2f srcPos = gridToPixel(_anim.srcRow, _anim.srcCol);
+            sf::Vector2f dstPos = gridToPixel(_anim.dstRow, _anim.dstCol);
+
+            if (t < 0.75f) {
+                // 移动阶段：幽灵棋子从 src 线性插值飞向 dst
+                float progress = t / 0.75f;
+                sf::Vector2f ghostPos = srcPos + (dstPos - srcPos) * progress;
+                int alpha = static_cast<int>(255.0f * (1.0f - progress * 0.3f));
+
+                // 幽灵棋子背景
+                _rect.setPosition(ghostPos);
+                _rect.setSize(sf::Vector2f(_cellSize - 2, _cellSize - 2));
+                _rect.setFillColor(sf::Color(255, 255, 200, alpha));
+                _rect.setOutlineColor(sf::Color(255, 200, 50, alpha));
+                _rect.setOutlineThickness(2.0f);
+                _window.draw(_rect);
+
+                // 幽灵棋子文字（源格内容）
+                std::string ghostStr;
+                ghostStr += _anim.srcLetter;
+                ghostStr += std::to_string(_anim.srcNum);
+                unsigned fs = static_cast<unsigned>(_cellSize * 0.5f);
+                if (fs < 8) fs = 8;
+                if (fs > 20) fs = 20;
+                _text->setCharacterSize(fs);
+                _text->setString(ghostStr);
+                _text->setFillColor(sf::Color(20, 20, 30, alpha));
+                centerText(*_text, ghostPos.x, ghostPos.y, _cellSize - 2, _cellSize - 2);
+                _window.draw(*_text);
+
+                // 目标格接收暖色高亮
+                float dstAlpha = 80.0f * (1.0f - progress);
+                _rect.setPosition(dstPos);
+                _rect.setSize(sf::Vector2f(_cellSize - 2, _cellSize - 2));
+                _rect.setFillColor(sf::Color(255, 220, 100, static_cast<int>(dstAlpha)));
+                _rect.setOutlineThickness(0);
+                _window.draw(_rect);
+            } else {
+                // 沉降阶段：目标格金色光环扩散
+                float settleProgress = (t - 0.75f) / 0.25f;
+                float expand = settleProgress * 8.0f;
+                int ringAlpha = static_cast<int>(200 * (1.0f - settleProgress));
+
+                _rect.setPosition(sf::Vector2f(
+                    dstPos.x - expand,
+                    dstPos.y - expand
+                ));
+                _rect.setSize(sf::Vector2f(
+                    _cellSize - 2 + expand * 2,
+                    _cellSize - 2 + expand * 2
+                ));
+                _rect.setFillColor(sf::Color::Transparent);
+                _rect.setOutlineColor(sf::Color(255, 200, 50, ringAlpha));
+                _rect.setOutlineThickness(3.0f);
+                _window.draw(_rect);
+            }
+        } else {
+            _anim.active = false;
+        }
     }
 
     _window.display();
@@ -1280,8 +1330,11 @@ UserAction SFMLRenderer::processKeyEvent(const sf::Event::KeyPressed& keyEvent)
         case sf::Keyboard::Key::Right:
             if (_cursorCol < _gridCols - 1) { _cursorCol++; _soundMgr.play(SoundManager::Click); }
             return UserAction::NONE;
-        case sf::Keyboard::Key::Enter: return UserAction::CONFIRM;
+        case sf::Keyboard::Key::Enter:
+            if (_anim.active) return UserAction::NONE;
+            return UserAction::CONFIRM;
         case sf::Keyboard::Key::Space:
+            if (_anim.active) return UserAction::NONE;
             // 两段式：无选中→选中；同格再按→取消；邻格→合并；非邻格→重选
             if (!_hasSelection) {
                 _selectedRow = _cursorRow;
@@ -1315,7 +1368,9 @@ UserAction SFMLRenderer::processKeyEvent(const sf::Event::KeyPressed& keyEvent)
         case sf::Keyboard::Key::F11:
             toggleFullscreen();
             return UserAction::NONE;
-        case sf::Keyboard::Key::S:     return UserAction::SUBMIT;
+        case sf::Keyboard::Key::S:
+            if (_anim.active) return UserAction::NONE;
+            return UserAction::SUBMIT;
         case sf::Keyboard::Key::Q:     return UserAction::QUIT;
         case sf::Keyboard::Key::L:     return UserAction::VIEW_LEADERBOARD;
         case sf::Keyboard::Key::Num1: case sf::Keyboard::Key::Numpad1:
@@ -1331,6 +1386,7 @@ UserAction SFMLRenderer::processKeyEvent(const sf::Event::KeyPressed& keyEvent)
         case sf::Keyboard::Key::B:
             return UserAction::BACK;
         case sf::Keyboard::Key::E:
+            if (_anim.active) return UserAction::NONE;
             return UserAction::AI_EXECUTE;
         default:
             return UserAction::NONE;
@@ -1348,6 +1404,7 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
 
     case UIScreen::Gameplay:
     case UIScreen::StartSelect:
+        if (_anim.active) return UserAction::NONE;
         // ---- 游戏内网格点击 ----
         if (mx >= GRID_OFFSET_X && mx < panelX() - 10 &&
             my >= GRID_OFFSET_Y && my < _window.getSize().y - 10) {
@@ -1488,12 +1545,15 @@ UserAction SFMLRenderer::processMouseEvent(const sf::Event::MouseButtonPressed& 
 //  动画
 // ================================================================
 
-void SFMLRenderer::triggerMergeAnim(int row, int col)
+void SFMLRenderer::triggerMergeAnim(int srcRow, int srcCol, char srcLetter, int srcNum,
+                                    int dstRow, int dstCol, char resultLetter, int resultNum)
 {
-    _animRow = row;
-    _animCol = col;
-    _animating = true;
-    _animClock.restart();
+    _anim.active = true;
+    _anim.clock.restart();
+    _anim.srcRow = srcRow; _anim.srcCol = srcCol;
+    _anim.srcLetter = srcLetter; _anim.srcNum = srcNum;
+    _anim.dstRow = dstRow; _anim.dstCol = dstCol;
+    _anim.resultLetter = resultLetter; _anim.resultNum = resultNum;
 }
 
 // ================================================================
