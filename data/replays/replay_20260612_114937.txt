@@ -1,0 +1,35 @@
+# 密阵突围 回放记录
+[Puzzle] builtin_01
+[Grid] 25 25
+[Player] a
+[Starts] 7,12 9,21 17,19 19,3 7,4
+[Start] 2026-06-12 11:48:45
+[End] 2026-06-12 11:49:37
+[TotalSteps] 26
+# 操作序列：序号 源坐标 -> 目标坐标 方向 结果
+[Move] 001 9,21 -> 9,20 LEFT D3
+[Move] 002 9,20 -> 9,19 LEFT R3
+[Move] 003 9,19 -> 10,19 DOWN H3
+[Move] 004 10,19 -> 10,18 LEFT A3
+[Move] 005 10,18 -> 9,18 UP Q3
+[Move] 006 9,18 -> 8,18 UP Q9
+[Slide] 007 8,18 -> 9,18 DOWN Q9
+[Slide] 008 9,18 -> 9,19 RIGHT Q9
+[Slide] 009 9,19 -> 9,20 RIGHT Q9
+[Slide] 010 9,20 -> 9,21 RIGHT Q9
+[Move] 011 17,19 -> 16,19 UP C2
+[Slide] 012 16,19 -> 17,19 DOWN C2
+[Move] 013 17,19 -> 17,18 LEFT C9
+[Slide] 014 17,18 -> 17,19 RIGHT C9
+[Move] 015 17,19 -> 17,20 RIGHT C9
+[Move] 016 19,3 -> 19,4 RIGHT X7
+[Slide] 017 19,4 -> 19,3 LEFT X7
+[Move] 018 19,3 -> 19,2 LEFT D7
+[Move] 019 7,4 -> 8,4 DOWN J9
+[Slide] 020 8,4 -> 7,4 UP J9
+[Move] 021 7,4 -> 7,5 RIGHT J2
+[Move] 022 7,12 -> 8,12 DOWN J5
+[Move] 023 8,12 -> 8,13 RIGHT T5
+[Slide] 024 8,13 -> 8,12 LEFT T5
+[Slide] 025 8,12 -> 7,12 UP T5
+[Move] 026 7,12 -> 7,11 LEFT T5
