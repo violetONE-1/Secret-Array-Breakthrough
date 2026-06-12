@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"E:/Matrix breakthrough/build_nogui/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

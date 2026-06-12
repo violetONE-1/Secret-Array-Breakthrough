@@ -1,0 +1,10 @@
+^E:\MATRIX BREAKTHROUGH\BUILD_NOGUI\CMAKEFILES\74FE7543D2166D28D4D6638AEFB6FDE3\GENERATE.STAMP.RULE
+setlocal
+D:\CMake\bin\cmake.exe "-SE:/Matrix breakthrough" "-BE:/Matrix breakthrough/build_nogui" --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file "E:/Matrix breakthrough/build_nogui/MatrixBreakthrough.sln"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

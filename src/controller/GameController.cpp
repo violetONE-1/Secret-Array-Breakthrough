@@ -779,9 +779,38 @@ void GameController::handleVSAIWatch()
 
             if (!moved) {
                 playerOut = true;
-                _renderer->setTurnMessage("You're out! AI continues...");
-                _renderer->render(*_state);
-                std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+                // 真·无棋可走（而非主动投降）：弹窗告知，后台让 AI 走完
+                if (!_state->hasValidMoves(CellOwner::Player)) {
+                    _renderer->showMessage("You have no more valid moves!");
+
+                    // 后台静默执行 AI 剩余回合（贪心策略，无渲染）
+                    AIStrategy origStrategy = _aiPlayer.strategy();
+                    int origDelay = _aiDelayMs;
+                    _aiPlayer.setStrategy(AIStrategy::GREEDY);
+                    _aiDelayMs = 0;
+
+                    while (_state->hasValidMoves(CellOwner::AI) && _renderer->isOpen()) {
+                        auto aiMove = _aiPlayer.findBestMove(*_state, _state->aiCells());
+                        if (!aiMove.has_value()) break;
+
+                        int srcR = aiMove->srcRow, srcC = aiMove->srcCol;
+                        int dstR = aiMove->dstRow, dstC = aiMove->dstCol;
+
+                        bool ok = false;
+                        if (aiMove->move.moveType == MoveType::SLIDE) {
+                            ok = doAISlide(CellOwner::AI, srcR, srcC, dstR, dstC);
+                        } else {
+                            ok = doAIMerge(CellOwner::AI, srcR, srcC, dstR, dstC);
+                        }
+                        if (!ok) break;
+                    }
+
+                    _aiPlayer.setStrategy(origStrategy);
+                    _aiDelayMs = origDelay;
+                }
+
+                break;
             }
         }
 

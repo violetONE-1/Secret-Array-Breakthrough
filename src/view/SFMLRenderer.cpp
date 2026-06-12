@@ -742,7 +742,7 @@ void SFMLRenderer::showLeaderboard(const std::vector<ScoreRecord>& records)
     const char* headers[] = {"#", "Player", "Puzzle", "Time(s)", "Steps", "Score"};
     _text->setCharacterSize(14);
     _text->setFillColor(sf::Color(60, 60, 80));
-    for (int i = 0; i < 7; ++i) {
+    for (int i = 0; i < 6; ++i) {
         _text->setString(headers[i]);
         _text->setPosition(sf::Vector2f(colX[i], headerY));
         _window.draw(*_text);

@@ -1,0 +1,77 @@
+# 密阵突围 回放记录
+[Puzzle] builtin_01
+[Grid] 25 25
+[Player] aa
+[Starts] 10,12 4,19 17,20 18,7 5,4
+[Start] 2026-06-12 11:13:01
+[End] 2026-06-12 11:15:23
+[TotalSteps] 68
+# 操作序列：序号 源坐标 -> 目标坐标 方向 结果
+[Move] 001 4,19 -> 3,19 UP K9
+[Move] 002 3,19 -> 3,18 LEFT X9
+[Move] 003 17,20 -> 17,19 LEFT C2
+[Move] 004 17,19 -> 16,19 UP C2
+[Move] 005 16,19 -> 15,19 UP A2
+[Move] 006 15,19 -> 15,18 LEFT R2
+[Move] 007 15,18 -> 16,18 DOWN Z2
+[Move] 008 10,12 -> 9,12 UP K8
+[Move] 009 9,12 -> 9,11 LEFT L8
+[Slide] 010 16,18 -> 16,19 RIGHT Z2
+[Move] 011 16,19 -> 16,20 RIGHT Q2
+[Move] 012 16,20 -> 15,20 UP U2
+[Slide] 013 15,20 -> 16,20 DOWN U2
+[Slide] 014 16,20 -> 17,20 DOWN U2
+[Move] 015 17,20 -> 17,21 RIGHT G2
+[Move] 016 18,7 -> 17,7 UP L1
+[Move] 017 17,7 -> 17,8 RIGHT P1
+[Move] 018 17,8 -> 17,9 RIGHT G1
+[Slide] 019 17,9 -> 17,8 LEFT G1
+[Slide] 020 17,8 -> 17,7 LEFT G1
+[Move] 021 17,7 -> 16,7 UP R1
+[Move] 022 5,4 -> 5,5 RIGHT L3
+[Move] 023 5,5 -> 6,5 DOWN F3
+[Move] 024 6,5 -> 7,5 DOWN O3
+[Slide] 025 7,5 -> 6,5 UP O3
+[Move] 026 6,5 -> 6,6 RIGHT O1
+[Move] 027 6,6 -> 7,6 DOWN O8
+[Slide] 028 7,6 -> 6,6 UP O8
+[Move] 029 6,6 -> 6,7 RIGHT X8
+[Slide] 030 6,7 -> 6,6 LEFT X8
+[Move] 031 6,6 -> 5,6 UP B8
+[Move] 032 5,6 -> 4,6 UP K8
+[Move] 033 4,6 -> 4,7 RIGHT K3
+[Move] 034 4,7 -> 3,7 UP K7
+[Slide] 035 3,7 -> 4,7 DOWN K7
+[Slide] 036 4,7 -> 4,6 LEFT K7
+[Slide] 037 4,6 -> 5,6 DOWN K7
+[Slide] 038 5,6 -> 6,6 DOWN K7
+[Slide] 039 6,6 -> 7,6 DOWN K7
+[Move] 040 7,6 -> 8,6 DOWN K7
+[Move] 041 8,6 -> 8,7 RIGHT B7
+[Slide] 042 3,18 -> 3,19 RIGHT X9
+[Move] 043 3,19 -> 3,20 RIGHT Q9
+[Move] 044 3,20 -> 3,21 RIGHT Q1
+[Move] 045 16,7 -> 16,8 RIGHT R9
+[Move] 046 16,8 -> 16,9 RIGHT R6
+[Move] 047 16,9 -> 15,9 UP R6
+[Slide] 048 15,9 -> 16,9 DOWN R6
+[Slide] 049 16,9 -> 17,9 DOWN R6
+[Move] 050 17,9 -> 17,10 RIGHT R3
+[Slide] 051 17,10 -> 17,9 LEFT R3
+[Move] 052 17,9 -> 18,9 DOWN R2
+[Slide] 053 8,7 -> 8,6 LEFT B7
+[Slide] 054 8,6 -> 7,6 UP B7
+[Slide] 055 7,6 -> 6,6 UP B7
+[Slide] 056 6,6 -> 5,6 UP B7
+[Slide] 057 5,6 -> 4,6 UP B7
+[Slide] 058 4,6 -> 4,7 RIGHT B7
+[Move] 059 4,7 -> 4,8 RIGHT B6
+[Slide] 060 17,21 -> 17,20 LEFT G2
+[Slide] 061 17,20 -> 17,21 RIGHT G2
+[Move] 062 17,21 -> 17,22 RIGHT G2
+[Slide] 063 17,22 -> 17,21 LEFT G2
+[Slide] 064 17,21 -> 17,20 LEFT G2
+[Slide] 065 17,20 -> 17,19 LEFT G2
+[Slide] 066 17,19 -> 16,19 UP G2
+[Slide] 067 16,19 -> 15,19 UP G2
+[Move] 068 15,19 -> 14,19 UP G3
