@@ -315,27 +315,31 @@ return false  // 所有棋子均无合法操作
 
 **场景示例：** 玩家棋子在 (5,5)，左边 (5,4) 是空格，(5,3) 是空格，(5,2) 是对手棋子 B3。BFS 从 (5,5) → (5,4) → (5,3)，然后检查 (5,2) 的 B3 是否可与 (5,5) 的棋子合并。若用直接邻居扫描，则只能检查到 (5,4) 是空格，漏掉了 (5,2)。
 
-##### 算法 3：AI 贪心策略 — `AIPlayer::greedyPick()` — O(N log N)
+##### 算法 3：AI 贪心策略 — `AIPlayer::greedyPick()` — O(N)
 
 ```
 输入：moves（所有合法操作列表）
-输出：选中的最佳操作
+输出：选中的操作
 
-将 moves 分为两组：merges（合并操作）和 slides（滑行操作）
+if 随机数 [1,100] ≤ 15:           // ← 15% 混沌因子
+    return 从 moves 中均匀随机选一个  // 完全忽略策略
 
-if 随机数 [1,100] ≤ 15:           // 15% 混沌因子
-    return 从 moves 中均匀随机选一个
+将 moves 分为 merges（合并）和 slides（滑行）
 
 if merges 不为空:
-    对每个 merge 操作 m 计算得分：
-        score(m) = (m.resultLetter - 'A' + 1) + m.resultNumber
-    return 得分最高的 merge 操作     // ← 选择字母+数字总值最大的合并
+    对每个 merge 操作 m 计算格子强度：
+        intensity(m) = (m.resultLetter - 'A' + 1) + m.resultNumber
+    return 强度最高的 merge 操作
+    // ↑ 注意：此值不等于游戏得分（每步固定 10 分），
+    //   仅作为"选哪个合并结果更强"的启发式
 
 if slides 不为空:
-    return 随机选一个 slide 操作
+    return 从 slides 中均匀随机选一个
 
-return nullopt  // 无合法操作
+return nullopt
 ```
+
+注：游戏得分按步数计算（每步 10 分），所有合并操作在得分上等价。greedy 策略中的 `intensity` 仅用于选择"合并后更强的格子"作为启发式，而非实际游戏分数。
 
 ##### 算法 4：AI 随机策略 — `AIPlayer::randomPick()` — O(N)
 
@@ -801,7 +805,7 @@ _renderer->showMessage("You have no more valid moves!");
 | 合并判定 `canMerge()` | O(1) | O(1) | 常数次条件判断，无循环 |
 | BFS 可达性搜索 `hasValidMoves()` | O(K × gridArea) | O(K × reachableEmpty) | K ≤ 5, gridArea=625, 最坏约 3125 步 |
 | AI 全盘扫描 `findAllValidMoves()` | O(N × 4) | O(N × 4) | N=棋子数，常数检测邻居 |
-| AI 贪心选择 `greedyPick()` | O(N log N) | O(N) | 按分数排序 |
+| AI 贪心选择 `greedyPick()` | O(N) | O(N) | 用 `std::max_element` 选合并后格子强度最高的 |
 | AI 随机选择 `randomPick()` | O(N) | O(N) | 均匀分布随机选 |
 | 排行榜排序 `topByScore()` | O(M log M) | O(M log M) | M=总记录数，仅在查看时排序 |
 | 题面生成 | O(gridArea) | O(gridArea) | 每格常数次操作 + 连通性扫描 |
