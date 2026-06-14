@@ -513,50 +513,27 @@ vector<pair<int,int>> pickStartingCells(const Grid& grid, int count) const;
 
 #### 2.2.4 关键变量说明
 
-##### (A) GameController 核心成员
+##### (A) GameController 核心状态
 
 | 变量 | 类型 | 说明 |
 |------|------|------|
-| `_state` | `unique_ptr<GameState>` | 当前游戏运行时状态，游戏结束后 `reset()` |
-| `_player` | `Player` | 玩家信息（姓名 + 起始格） |
-| `_aiPlayer` | `AIPlayer` | AI 对手实例 |
-| `_phase` | `GamePhase` | **状态机核心**：当前游戏阶段（9 种枚举值） |
-| `_running` | `bool` | **主循环控制标志**：`true` 时持续运行，`false` 时退出 |
-| `_cursorRow, _cursorCol` | `int` | 光标位置（控制台模式下的用户焦点） |
-| `_gridRows, _gridCols` | `int` | 网格尺寸（由 Puzzle 加载时设置，默认 25×25） |
-| `_currentLevel` | `int` | 闯关模式当前关卡号（0 = 非闯关模式） |
-| `_vsAI` | `bool` | VS AI 对战模式标记 |
-| `_aiDelayMs` | `int` | AI 走子间的延迟毫秒数（Normal=300, Hard=500） |
-| `_aiStrategy` | `AIStrategy` | AI 策略（RANDOM 或 GREEDY） |
+| `_phase` | `GamePhase` | 状态机核心：当前阶段（MENU / GAMEPLAY / VS_AI_WATCH 等 9 种） |
+| `_running` | `bool` | 主循环控制：`true` 持续运行，`false` 退出 |
+| `_state` | `unique_ptr<GameState>` | 当前游戏运行时状态 |
+| `_currentLevel` | `int` | 闯关关卡号（0 = 非闯关模式） |
+| `_vsAI` | `bool` | VS AI 模式标记 |
+| `_aiStrategy` | `AIStrategy` | AI 策略（RANDOM / GREEDY） |
+| `_aiDelayMs` | `int` | AI 走子延迟（Normal=300, Hard=500） |
 
-##### (B) SFMLRenderer 核心成员
+##### (B) SFMLRenderer 核心状态
 
 | 变量 | 类型 | 说明 |
 |------|------|------|
 | `_window` | `sf::RenderWindow` | SFML 渲染窗口（1400×900） |
-| `_screen` | `UIScreen` | 当前 UI 屏幕枚举（Menu / Gameplay / Leaderboard 等 11 种） |
-| `_font` | `sf::Font` | 渲染字体（多路径回退加载：项目 → 系统字体） |
-| `_text` | `unique_ptr<sf::Text>` | 文字渲染对象 |
-| `_rect` | `sf::RectangleShape` | 矩形绘制对象（按钮、格子背景、分隔线共用） |
-| `_cellSize` | `float` | 每个格子的像素大小（窗口尺寸 / 网格尺寸，动态计算） |
-| `_cursorRow, _cursorCol` | `int` | 光标/焦点所在的网格位置 |
-| `_selectedRow, _selectedCol` | `int` | 两段式选中模式的源格位置 |
-| `_hasSelection` | `bool` | 是否已选中一个源格 |
-| `_anim` | `AnimState` | 合并动画状态（含时钟、源/目标坐标、结果格子数据） |
-| `_soundMgr` | `SoundManager` | 音效管理器 |
-
-##### (C) GameState 核心成员
-
-| 变量 | 类型 | 说明 |
-|------|------|------|
-| `_grid` | `Grid` | 当前棋盘（值语义，所有格子数据） |
-| `_playerCells` | `set<pair<int,int>>` | 玩家棋子在棋盘上的全部坐标 |
-| `_aiCells` | `set<pair<int,int>>` | AI 棋子在棋盘上的全部坐标 |
-| `_playerSteps, _aiSteps` | `int` | 双方各自的累计步数（用于 VS AI 评分） |
-| `_stepsTaken` | `int` | 总步数（用于单人模式评分） |
-| `_startTime` | `steady_clock::time_point` | 计时起点 |
-| `_timerStarted` | `bool` | 是否首次执行操作（用于延迟计时起点） |
-| `_gameOver` | `bool` | 游戏是否已结束 |
+| `_screen` | `UIScreen` | 当前 UI 屏幕（Menu / Gameplay / Leaderboard 等 11 种） |
+| `_hasSelection` | `bool` | 两段式选中：是否已选中源格 |
+| `_anim` | `AnimState` | 合并动画状态（时钟 + 源目标坐标 + 结果格子） |
+| `_soundMgr` | `SoundManager` | 5 种音效管理器 |
 
 ---
 
