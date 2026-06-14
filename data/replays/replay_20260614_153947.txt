@@ -1,0 +1,43 @@
+# 密阵突围 回放记录
+[Puzzle] builtin_01
+[Grid] 25 25
+[Player] a
+[Starts] 0,0 12,12 0,24 24,0 24,24
+[Start] 2026-06-14 15:38:47
+[End] 2026-06-14 15:39:47
+[TotalSteps] 34
+# 操作序列：序号 源坐标 -> 目标坐标 方向 结果
+[Move] 001 12,12 -> 12,13 RIGHT P5
+[Move] 002 12,13 -> 13,13 DOWN P4
+[Move] 003 13,13 -> 14,13 DOWN P9
+[Move] 004 14,13 -> 14,14 RIGHT F9
+[Move] 005 14,14 -> 13,14 UP F9
+[Slide] 006 13,14 -> 14,14 DOWN F9
+[Slide] 007 14,14 -> 14,13 LEFT F9
+[Slide] 008 14,13 -> 13,13 UP F9
+[Move] 009 13,13 -> 13,12 LEFT E9
+[Slide] 010 13,12 -> 12,12 UP E9
+[Move] 011 12,12 -> 12,11 LEFT E9
+[Move] 012 12,11 -> 11,11 UP X9
+[Move] 013 11,11 -> 10,11 UP X9
+[Move] 014 10,11 -> 10,10 LEFT B9
+[Move] 015 10,10 -> 9,10 UP B1
+[Move] 016 9,10 -> 9,11 RIGHT B9
+[Slide] 017 9,11 -> 10,11 DOWN B9
+[Slide] 018 10,11 -> 11,11 DOWN B9
+[Move] 019 0,24 -> 1,24 DOWN Z8
+[Move] 020 1,24 -> 2,24 DOWN Z8
+[Slide] 021 11,11 -> 12,11 DOWN B9
+[Move] 022 12,11 -> 12,10 LEFT S9
+[Move] 023 12,10 -> 12,9 LEFT F9
+[Slide] 024 12,9 -> 12,10 RIGHT F9
+[Slide] 025 12,10 -> 12,11 RIGHT F9
+[Slide] 026 12,11 -> 12,12 RIGHT F9
+[Slide] 027 12,12 -> 13,12 DOWN F9
+[Slide] 028 13,12 -> 13,13 RIGHT F9
+[Slide] 029 13,13 -> 14,13 DOWN F9
+[Slide] 030 14,13 -> 14,14 RIGHT F9
+[Move] 031 14,14 -> 15,14 DOWN F7
+[Move] 032 24,24 -> 23,24 UP R8
+[Move] 033 24,0 -> 23,0 UP R2
+[Move] 034 0,0 -> 0,1 RIGHT I1
